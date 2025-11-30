@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
 from .model.ServerOption import ServerForm
 
+from .router.sonolus import SonolusRouter
+
 class Sonolus:
     def __init__(
         self,
@@ -14,6 +16,7 @@ class Sonolus:
         effect_search: Optional[ServerForm] = None,
         particle_search: Optional[ServerForm] = None,
         engine_search: Optional[ServerForm] = None,
+        version: str = "1.0.1",
         enable_cors: bool = True,
     ):
         """
@@ -31,6 +34,7 @@ class Sonolus:
         """
         self.app = FastAPI()
         self.port = port
+        self.sonolus_router = SonolusRouter(version=version)
         
         if enable_cors:
             self.app.add_middleware(
@@ -40,6 +44,14 @@ class Sonolus:
                 allow_methods=["*"],
                 allow_headers=["*"],
             )
+            
+    def load(self, path: str):
+        """
+        Sonolus packでパックされたものを読み込みます。
+        Load a pack packed with Sonolus pack.
+        """
+        # TODO: ロード処理を実装 Implement loading process
+        pass
             
     def run(self):
         import uvicorn
