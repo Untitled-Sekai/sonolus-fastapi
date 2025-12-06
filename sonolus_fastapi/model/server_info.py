@@ -1,7 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from .text import LocalizationText
-from .base import SonolusResourceLocator
+
+class ServerInfoButton(BaseModel):
+    """サーバー情報ボタン - TypeScriptのServerInfoButtonに相当"""
+    type: str
 
 
 class ServerConfiguration(BaseModel):
@@ -23,19 +26,20 @@ class ServerInfoSection(BaseModel):
 
 
 class ServerInfo(BaseModel):
-    """Sonolusサーバー情報レスポンス"""
+    """Sonolusサーバー情報レスポンス - TypeScriptのServerInfoに相当"""
     title: LocalizationText
     description: Optional[LocalizationText] = None
-    banner: Optional[ServerBanner] = None
+    buttons: List[ServerInfoButton] = []
+    banner: Optional[Dict[str, Any]] = None
     configuration: ServerConfiguration = ServerConfiguration()
     
     # 各アイテムタイプのセクション
-    levels: ServerInfoSection = ServerInfoSection()
-    skins: ServerInfoSection = ServerInfoSection() 
-    backgrounds: ServerInfoSection = ServerInfoSection()
-    effects: ServerInfoSection = ServerInfoSection()
-    particles: ServerInfoSection = ServerInfoSection()
-    engines: ServerInfoSection = ServerInfoSection()
+    levels: Optional[ServerInfoSection] = None
+    skins: Optional[ServerInfoSection] = None
+    backgrounds: Optional[ServerInfoSection] = None
+    effects: Optional[ServerInfoSection] = None
+    particles: Optional[ServerInfoSection] = None
+    engines: Optional[ServerInfoSection] = None
     replays: Optional[ServerInfoSection] = None
     posts: Optional[ServerInfoSection] = None
     playlists: Optional[ServerInfoSection] = None

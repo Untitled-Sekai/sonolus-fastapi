@@ -1,9 +1,4 @@
 from enum import StrEnum
-from typing import Dict, Union
-
-# ローカライゼーション用の型定義
-LocalizationText = Union[str, Dict[str, str]]
-
 
 class SonolusText(StrEnum):
     """Sonolus Text Enum."""

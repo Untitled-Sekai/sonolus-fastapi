@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
-from .model.ServerOption import ServerForm, ItemType
-
-from .router.sonolus import SonolusRouter
+from .model.ServerOption import ServerForm
+from .model.sonolus_types import ItemType
 
 class Sonolus:
     def __init__(
@@ -34,7 +33,8 @@ class Sonolus:
         """
         self.app = FastAPI()
         self.port = port
-        self.sonolus_router = SonolusRouter(version=version)
+        # self.sonolus_router = SonolusRouter(version=version)
+        self.version = version
         
         if enable_cors:
             self.app.add_middleware(
@@ -45,11 +45,14 @@ class Sonolus:
                 allow_headers=["*"],
             )
             
+    def setup_routes(self):
+        """ルートをセットアップ"""
+            
     def server_info_router(self):
         """
         サーバー情報ルーター
         This is the server info router.
-        """            
+        """     
 
     def info_router(self, item_type: ItemType):
         """
