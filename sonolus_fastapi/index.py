@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, staticfiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
 from .model.ServerOption import ServerForm
@@ -77,8 +77,7 @@ class Sonolus:
         Sonolus packでパックされたものを読み込みます。
         Load a pack packed with Sonolus pack.
         """
-        # TODO: ロード処理を実装 Implement loading process
-        pass
+        self.app.mount('/sonolus/repository', staticfiles.StaticFiles(directory=path), name="repository")
             
     def run(self):
         import uvicorn

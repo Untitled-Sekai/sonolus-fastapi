@@ -6,5 +6,7 @@ app = Sonolus(
     enable_cors=True, # CORSを有効にするかどうか Whether to enable CORS
 )
 
+app.load('path/to/sonolus/pack') # Sonolus packのパスを指定してください Specify the path to the Sonolus pack
+
 if __name__ == "__main__":
     app.run() # サーバーを起動します Start the server
