@@ -19,3 +19,15 @@ class ServerInfoSlot(Generic[T]):
             self.sonolus._register_server_handler("server_info", desc)
             return fn
         return decorator
+
+class ServerAuthenticateSlot(Generic[T]):
+    def __init__(self, sonolus: "Sonolus"):
+        self.sonolus = sonolus
+        
+    def __call__(self, response_model: type[T]):
+        def decorator(fn):
+            from .handler import ServerAuthenticateHandlerDescriptor
+            desc = ServerAuthenticateHandlerDescriptor(fn, response_model)
+            self.sonolus._register_server_handler("authenticate", desc)
+            return fn
+        return decorator

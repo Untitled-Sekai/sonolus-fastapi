@@ -5,6 +5,9 @@ from sonolus_fastapi import Sonolus
 from sonolus_fastapi.model.base import SonolusServerInfo, SonolusConfiguration, SonolusButton, SonolusButtonType
 from sonolus_fastapi.model.items.post import PostItem
 from sonolus_fastapi.model.ServerItemDetails import ServerItemDetails
+from sonolus_fastapi.model.Request.authenticate import ServerAuthenticateRequest
+from sonolus_fastapi.model.Response.authenticate import ServerAuthenticateResponse
+from sonolus_fastapi.utils.generate import generate_random_string
 from sonolus_fastapi.pack import freepackpath
 
 # Sonolusインスタンスを作成 Create Sonolus instance
@@ -60,6 +63,16 @@ async def get_server_info(ctx):
             options=[]
         ),
         banner=None,
+    )
+    
+@sonolus.server.authenticate(ServerAuthenticateResponse) # 認証ハンドラーを登録 Register authenticate handler
+async def authenticate(ctx): # 認証処理 Authentication process
+    session = generate_random_string(16) # セッションIDを生成 Generate session ID
+    expiration = int(time.time() * 1000) + 3600 * 1000 # 有効期限を1時間後に設定 Set expiration to 1 hour later
+    
+    return ServerAuthenticateResponse( # 認証レスポンスを返す Return authentication response
+        session=session, # セッションID Session ID
+        expiration=expiration, # 有効期限 Expiration
     )
 
 @sonolus.post.detail(ServerItemDetails) # Postの詳細ハンドラーを登録 Register Post detail handler
