@@ -16,6 +16,7 @@ def pack_2_ItemModel(pack: PackModel):
         background_item = BackgroundItem(
             name=background_pack_item.name,
             title=background_pack_item.title.en or "",
+            subtitle=background_pack_item.subtitle.en or "",
             author=background_pack_item.author.en or "",
             description=background_pack_item.description.en or "",
             tags=background_pack_item.tags,
@@ -32,12 +33,13 @@ def pack_2_ItemModel(pack: PackModel):
         effect_item = EffectItem(
             name=effect_pack_item.name,
             title=effect_pack_item.title.en or "",
+            subtitle=effect_pack_item.subtitle.en or "",
             author=effect_pack_item.author.en or "",
             description=effect_pack_item.description.en or "",
             tags=effect_pack_item.tags,
             data=effect_pack_item.data,
             thumbnail=effect_pack_item.thumbnail,
-            configuration=effect_pack_item.configuration,
+            audio=effect_pack_item.audio,
         )
         effect_items.append(effect_item)
 
@@ -47,12 +49,13 @@ def pack_2_ItemModel(pack: PackModel):
         particle_item = ParticleItem(
             name=particle_pack_item.name,
             title=particle_pack_item.title.en or "",
+            subtitle=particle_pack_item.subtitle.en or "",
             author=particle_pack_item.author.en or "",
             description=particle_pack_item.description.en or "",
             tags=particle_pack_item.tags,
             data=particle_pack_item.data,
             thumbnail=particle_pack_item.thumbnail,
-            configuration=particle_pack_item.configuration,
+            texture=particle_pack_item.texture,
         )
         particle_items.append(particle_item)
 
@@ -62,12 +65,13 @@ def pack_2_ItemModel(pack: PackModel):
         skin_item = SkinItem(
             name=skin_pack_item.name,
             title=skin_pack_item.title.en or "",
+            subtitle=skin_pack_item.subtitle.en or "",
             author=skin_pack_item.author.en or "",
             description=skin_pack_item.description.en or "",
             tags=skin_pack_item.tags,
             data=skin_pack_item.data,
             thumbnail=skin_pack_item.thumbnail,
-            configuration=skin_pack_item.configuration,
+            texture=skin_pack_item.texture,
         )
         skin_items.append(skin_item)
 
@@ -84,8 +88,12 @@ def set_pack_memory(db_path: str):
     pack = PackModel.parse_obj(data)
     background_items, effect_items, particle_items, skin_items = pack_2_ItemModel(pack)
 
-    BackgroundMemory.push(background_items)
-    EffectMemory.push(effect_items)
-    ParticleMemory.push(particle_items)
-    SkinMemory.push(skin_items)
+    for item in background_items:
+        BackgroundMemory.push(item)
+    for item in effect_items:
+        EffectMemory.push(item)
+    for item in particle_items:
+        ParticleMemory.push(item)
+    for item in skin_items:
+        SkinMemory.push(item)
     

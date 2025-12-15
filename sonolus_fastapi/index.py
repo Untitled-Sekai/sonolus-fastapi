@@ -81,6 +81,15 @@ class Sonolus:
         Typeごとのdetailルーター
         This is the detail router for each type.
         """
+
+    class ItemMemory:
+        Background = BackgroundMemory
+        Effect = EffectMemory
+        Particle = ParticleMemory
+        Skin = SkinMemory
+        Engine = EngineMemory
+        Level = LevelMemory
+        Post = PostMemory
             
     def load(self, path: str):
         """

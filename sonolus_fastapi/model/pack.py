@@ -5,12 +5,18 @@ from .items.background import BackgroundPackItem
 from .items.skin import SkinPackItem
 from .items.effect import EffectPackItem
 from .items.particle import ParticlePackItem
+from .items.level import LevelPackItem
+from .items.post import PostPackItem
+from .items.playlist import PlaylistPackItem
 
 class DbInfo(BaseModel):
     """
     packのinfoに相当するモデル
     """
-    title: str
+    title: Dict[str, str]
+    subtitle: Optional[Dict[str, str]] = None
+    author: Optional[Dict[str, str]] = None
+    description: Optional[Dict[str, str]] = None
     
 class PackModel(BaseModel):
     """
@@ -21,3 +27,6 @@ class PackModel(BaseModel):
     backgrounds: List[BackgroundPackItem] = []
     effects: List[EffectPackItem] = []
     particles: List[ParticlePackItem] = []
+    levels: List[LevelPackItem] = []
+    posts: List[PostPackItem] = []
+    playlists: List[PlaylistPackItem] = []

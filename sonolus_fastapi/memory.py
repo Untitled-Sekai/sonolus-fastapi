@@ -300,3 +300,12 @@ class PostMemory:
         メモリをクリアする
         """
         self.posts = []
+
+# Global instances
+BackgroundMemory = BackgroundMemory()
+EffectMemory = EffectMemory()
+ParticleMemory = ParticleMemory()
+SkinMemory = SkinMemory()
+EngineMemory = EngineMemory()
+LevelMemory = LevelMemory()
+PostMemory = PostMemory()
