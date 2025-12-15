@@ -30,11 +30,11 @@ class PackBaseItem(BaseItem):
     description: LocalationText = LocalationText()
 
 class ItemType(str, Enum):
-    backgrounds = "backgrounds"
-    effects = "effects"
-    engines = "engines"
-    levels = "levels"
-    particles = "particles"
-    posts = "posts"
-    replais = "replais"
-    skins = "skins"
+    background = "backgrounds"
+    effect = "effects"
+    engine = "engines"
+    level = "levels"
+    particle = "particles"
+    post = "posts"
+    replay = "replays"
+    skin = "skins"

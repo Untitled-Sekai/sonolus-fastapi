@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from .memory import (
     BackgroundMemory,
     EffectMemory,
@@ -12,13 +12,21 @@ from .memory import (
     PostMemory
 )
 from .model.ServerOption import ServerForm
+from .model.items import ItemType
+from .utils.item_namespace import ItemNamespace
 from .utils.pack import set_pack_memory
+from .utils.context import SonolusContext
+from .utils.query import Query
+from .router.sonolus_api import SonolusApi
 
 class Sonolus:
+    Kind = Literal["info", "list", "detail"]
+    
     def __init__(
         self,
         address: str,
         port: int,
+        dev: bool = False,
         level_search: Optional[ServerForm] = None,
         skin_search: Optional[ServerForm] = None,
         background_search: Optional[ServerForm] = None,
@@ -43,8 +51,24 @@ class Sonolus:
         """
         self.app = FastAPI()
         self.port = port
+        self.address = address
+        self.dev = dev
         self.version = version
         self.headers = { "Sonolus-Version": self.version }
+        
+        self._handlers: dict[ItemType, dict[str, object]] = {}
+        self.level = ItemNamespace(self, ItemType.level)
+        self.skin = ItemNamespace(self, ItemType.skin)
+        self.engine = ItemNamespace(self, ItemType.engine)
+        self.background = ItemNamespace(self, ItemType.background)  
+        self.effect = ItemNamespace(self, ItemType.effect)
+        self.particle = ItemNamespace(self, ItemType.particle)
+        self.post = ItemNamespace(self, ItemType.post)
+        self.replay = ItemNamespace(self, ItemType.replay)
+
+        # APIルーターを初期化・登録
+        self.api = SonolusApi(self)
+        self.api.register(self.app)
 
         if enable_cors:
             self.app.add_middleware(
@@ -55,32 +79,22 @@ class Sonolus:
                 allow_headers=["*"],
             )
             
-    def setup_routes(self):
-        """ルートをセットアップ"""
-            
-    def server_info_router(self):
-        """
-        サーバー情報ルーター
-        This is the server info router.
-        """     
+    def build_context(self, request: Request) -> SonolusContext:
+        # リクエストからコンテキストを構築
+        return SonolusContext(
+            user_handle=request.headers.get("Sonolus-User-Handle"),
+            is_dev=self.dev
+        )
+    
+    def build_query(self, item_type: ItemType, request: Request) -> Query:
+        # クエリパラメータを取得してQueryオブジェクトを構築
+        return Query(dict(request.query_params))
 
-    def info_router(self):
-        """
-        Typeごとのinfoルーター
-        This is the info router for each type.
-        """
+    def _register_handler(self, item_type: ItemType, kind: Kind, descriptor: object):
+        self._handlers.setdefault(item_type, {})[kind] = descriptor
         
-    def list_router(self):
-        """
-        Typeごとのlistルーター
-        This is the list router for each type.
-        """
-        
-    def detail_router(self):
-        """
-        Typeごとのdetailルーター
-        This is the detail router for each type.
-        """
+    def get_handler(self, item_type: ItemType, kind: Kind):
+        return self._handlers.get(item_type, {}).get(kind)
 
     class ItemMemory:
         Background = BackgroundMemory
@@ -106,6 +120,10 @@ class Sonolus:
         import uvicorn
         print(f"Starting Sonolus server on port {self.port}...")
         uvicorn.run(self.app, host='0.0.0.0', port=self.port)
+
+
+# -------------------------
+
 
 class SonolusSpa:
     def __init__(
