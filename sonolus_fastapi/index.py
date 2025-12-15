@@ -2,6 +2,15 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
+from .memory import (
+    BackgroundMemory,
+    EffectMemory,
+    ParticleMemory,
+    SkinMemory,
+    EngineMemory,
+    LevelMemory,
+    PostMemory
+)
 from .model.ServerOption import ServerForm
 from .utils.pack import set_pack_memory
 
@@ -34,9 +43,7 @@ class Sonolus:
         """
         self.app = FastAPI()
         self.port = port
-        # self.sonolus_router = SonolusRouter(version=version)
         self.version = version
-        
         self.headers = { "Sonolus-Version": self.version }
 
         if enable_cors:

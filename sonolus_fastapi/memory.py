@@ -4,6 +4,7 @@ from .model.items.effect import EffectItem
 from .model.items.particle import ParticleItem
 from .model.items.skin import SkinItem
 from .model.items.engine import EngineItem
+from .model.items.post import PostItem
 from typing import List
 
 class LevelMemory:
@@ -257,3 +258,45 @@ class EngineMemory:
         メモリをクリアする
         """
         self.engines = []
+
+class PostMemory:
+    """
+    ポストメモリ管理クラス
+    """
+    def __init__(self):
+        self.posts: List[PostItem] = []
+        
+    def push(self, post: PostItem):
+        """
+        ポストをメモリに追加する
+        """
+        self.posts.append(post)
+        
+    def unshift(self) -> PostItem:
+        """
+        最初のポストをメモリから取り出す
+        """
+        if self.posts:
+            return self.posts.pop(0)
+        raise IndexError("No posts in memory")
+    
+    def delete(self, post: PostItem):
+        """
+        指定したポストをメモリから削除する
+        """
+        self.posts = [p for p in self.posts if p != post]
+
+    def get_name(self, name: str) -> PostItem:
+        """
+        指定したnameのポストをメモリから取得する
+        """
+        for post in self.posts:
+            if post.name == name:
+                return post
+        raise ValueError(f"Post with name {name} not found in memory")
+        
+    def clear(self):
+        """
+        メモリをクリアする
+        """
+        self.posts = []
