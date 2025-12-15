@@ -32,6 +32,15 @@ class LevelMemory:
         指定したレベルをメモリから削除する
         """
         self.levels = [l for l in self.levels if l != level]
+
+    def get_name(self, name: str) -> LevelItem:
+        """
+        指定したnameのレベルをメモリから取得する
+        """
+        for level in self.levels:
+            if level.name == name:
+                return level
+        raise ValueError(f"Level with name {name} not found in memory")
         
     def clear(self):
         """
@@ -65,6 +74,15 @@ class BackgroundMemory:
         指定した背景をメモリから削除する
         """
         self.backgrounds = [b for b in self.backgrounds if b != background]
+
+    def get_name(self, name: str) -> BackgroundItem:
+        """
+        指定したnameの背景をメモリから取得する
+        """
+        for background in self.backgrounds:
+            if background.name == name:
+                return background
+        raise ValueError(f"Background with name {name} not found in memory")
         
     def clear(self):
         """
@@ -98,6 +116,15 @@ class EffectMemory:
         指定したエフェクトをメモリから削除する
         """
         self.effects = [e for e in self.effects if e != effect]
+
+    def get_name(self, name: str) -> EffectItem:
+        """
+        指定したnameのエフェクトをメモリから取得する
+        """
+        for effect in self.effects:
+            if effect.name == name:
+                return effect
+        raise ValueError(f"Effect with name {name} not found in memory")
         
     def clear(self):
         """
@@ -131,6 +158,15 @@ class ParticleMemory:
         指定したパーティクルをメモリから削除する
         """
         self.particles = [p for p in self.particles if p != particle]
+
+    def get_name(self, name: str) -> ParticleItem:
+        """
+        指定したnameのパーティクルをメモリから取得する
+        """
+        for particle in self.particles:
+            if particle.name == name:
+                return particle
+        raise ValueError(f"Particle with name {name} not found in memory")
         
     def clear(self):
         """
@@ -164,6 +200,15 @@ class SkinMemory:
         指定したスキンをメモリから削除する
         """
         self.skins = [s for s in self.skins if s != skin]
+
+    def get_name(self, name: str) -> SkinItem:
+        """
+        指定したnameのスキンをメモリから取得する
+        """
+        for skin in self.skins:
+            if skin.name == name:
+                return skin
+        raise ValueError(f"Skin with name {name} not found in memory")
         
     def clear(self):
         """
@@ -197,6 +242,15 @@ class EngineMemory:
         指定したエンジンをメモリから削除する
         """
         self.engines = [e for e in self.engines if e != engine]
+
+    def get_name(self, name: str) -> EngineItem:
+        """
+        指定したnameのエンジンをメモリから取得する
+        """
+        for engine in self.engines:
+            if engine.name == name:
+                return engine
+        raise ValueError(f"Engine with name {name} not found in memory")
         
     def clear(self):
         """

@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
 from .model.ServerOption import ServerForm
+from .utils.pack import set_pack_memory
 
 class Sonolus:
     def __init__(
@@ -81,6 +82,8 @@ class Sonolus:
         """
         import os
         repository_path = os.path.join(path, 'repository')
+        db_path = os.path.join(path, 'db.json')
+        set_pack_memory(db_path)
         self.app.mount('/sonolus/repository', StaticFiles(directory=repository_path), name="repository")
             
     def run(self):

@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 
-from .items.background import BackgroundItem
-from .items.skin import SkinItem
-from .items.effect import EffectItem
-from .items.particle import ParticleItem
+from .items.background import BackgroundPackItem
+from .items.skin import SkinPackItem
+from .items.effect import EffectPackItem
+from .items.particle import ParticlePackItem
 
 class DbInfo(BaseModel):
     """
@@ -17,7 +17,7 @@ class PackModel(BaseModel):
     パックモデル
     """
     info: DbInfo
-    skins: List[SkinItem] = []
-    backgrounds: List[BackgroundItem] = []
-    effects: List[EffectItem] = []
-    particles: List[ParticleItem] = []
+    skins: List[SkinPackItem] = []
+    backgrounds: List[BackgroundPackItem] = []
+    effects: List[EffectPackItem] = []
+    particles: List[ParticlePackItem] = []
