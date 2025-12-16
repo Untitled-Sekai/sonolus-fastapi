@@ -27,11 +27,28 @@ class SonolusApi:
         self.router.get("/{item_type}/{name}")(self._detail)
 
     # -------------------------
+    # utility methods
+    # -------------------------
+    
+    async def _parse_request_body(self, request: Request, model_class=None):
+        """リクエストボディを解析してモデルクラスのインスタンスを返す"""
+        try:
+            body = await request.json()
+            if model_class:
+                return model_class.model_validate(body)
+            return body
+        except Exception:
+            return None
+
+    # -------------------------
     # handlers
     # -------------------------
     
     async def _authenticate(self, request: Request):
-        ctx = self.sonolus.build_context(request)
+        from sonolus_fastapi.model.Request.authenticate import ServerAuthenticateRequest
+        auth_request = await self._parse_request_body(request, ServerAuthenticateRequest)
+        
+        ctx = self.sonolus.build_context(request, auth_request)
         
         handler = self.sonolus.get_server_handler("authenticate")
         if handler is None:

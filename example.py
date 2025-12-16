@@ -2,6 +2,9 @@ import time
 
 from fastapi import HTTPException
 from sonolus_fastapi import Sonolus
+from sonolus_fastapi.model.text import SonolusText
+from sonolus_fastapi.model.icon import SonolusIcon
+from sonolus_fastapi.utils.context import SonolusContext
 from sonolus_fastapi.model.base import SonolusServerInfo, SonolusConfiguration, SonolusButton, SonolusButtonType
 from sonolus_fastapi.model.items.post import PostItem
 from sonolus_fastapi.model.ServerItemInfo import ServerItemInfo
@@ -11,6 +14,7 @@ from sonolus_fastapi.model.ServerItemDetails import ServerItemDetails
 from sonolus_fastapi.model.Request.authenticate import ServerAuthenticateRequest
 from sonolus_fastapi.model.Response.authenticate import ServerAuthenticateResponse
 from sonolus_fastapi.utils.generate import generate_random_string
+from sonolus_fastapi.utils.session import MemorySessionStore
 from sonolus_fastapi.pack import freepackpath
 
 # Sonolusインスタンスを作成 Create Sonolus instance
@@ -20,6 +24,7 @@ sonolus = Sonolus(
     port=8000, # サーバーポートを指定してください Specify your server port
     enable_cors=True, # CORSを有効にするかどうか Whether to enable CORS
     dev=True, # 開発モード Development mode
+    session_store=MemorySessionStore(), # セッションストアを指定 Specify session store
 )
 
 # ---------------------------------------- 
@@ -75,9 +80,11 @@ async def get_server_info(ctx):
     )
     
 @sonolus.server.authenticate(ServerAuthenticateResponse) # 認証ハンドラーを登録 Register authenticate handler
-async def authenticate(ctx): # 認証処理 Authentication process
+async def authenticate(ctx: SonolusContext[ServerAuthenticateRequest]): # 認証処理 Authentication process
     session = generate_random_string(16) # セッションIDを生成 Generate session ID
     expiration = int(time.time() * 1000) + 3600 * 1000 # 有効期限を1時間後に設定 Set expiration to 1 hour later
+    
+    sonolus.session_store.set(session, ctx.request)
     
     return ServerAuthenticateResponse( # 認証レスポンスを返す Return authentication response
         session=session, # セッションID Session ID
@@ -109,8 +116,8 @@ async def get_post_detail(ctx, name: str): # Postの詳細を取得 Get Post det
 async def get_background_info(ctx): # Backgroundの情報を取得 Get Background info
     
     background_section = BackgroundSection(
-        title="Background",
-        itemType="background", 
+        title=SonolusText.BACKGROUND,
+        icon=SonolusIcon.Heart,
         items=sonolus.ItemMemory.Background.list_all() # メモリから全てのBackgroundItemを取得 Get all BackgroundItems from memory
     )
     
@@ -125,12 +132,9 @@ async def get_background_info(ctx): # Backgroundの情報を取得 Get Backgroun
 async def get_background_list(ctx, query): # Backgroundのリストを取得 Get Background list
     backgrounds = sonolus.ItemMemory.Background.list_all() # メモリから全てのBackgroundItemを取得 Get all BackgroundItems from memory
     
-    # BackgroundItemオブジェクトを辞書に変換 Convert BackgroundItem objects to dictionaries
-    background_dicts = [bg.model_dump() for bg in backgrounds]
-    
     return ServerItemList( # ServerItemListを返す Return ServerItemList
         pageCount=1, # ページ数 Page count
-        items=background_dicts, # BackgroundItemのリスト（辞書形式） List of BackgroundItems (as dictionaries)
+        items=backgrounds, # BackgroundItemのリスト List of BackgroundItems
     )
     
 @sonolus.background.detail(ServerItemDetails) # Backgroundの詳細ハンドラーを登録 Register Background detail handler

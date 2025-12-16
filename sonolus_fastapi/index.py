@@ -99,10 +99,10 @@ class Sonolus:
                 allow_headers=["*"],
             )
             
-    def build_context(self, request: Request) -> SonolusContext:
-        # リクエストからコンテキストを構築
+    def build_context(self, request: Request, request_body: Any = None) -> SonolusContext:
         return SonolusContext(
             user_session=request.headers.get("Sonolus-Session"),
+            request=request_body,
             is_dev=self.dev
         )
     
