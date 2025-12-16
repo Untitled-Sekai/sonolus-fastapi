@@ -30,8 +30,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://sonolus-fastapi.pim4n-net.com"
-Repository = "https://github.com/yourusername/sonolus-fastapi"
-Issues = "https://github.com/yourusername/sonolus-fastapi/issues"
+Repository = "https://github.com/Piliman22/sonolus-fastapi/"
+Issues = "https://github.com/Piliman22/sonolus-fastapi/issues"
 Documentation = "https://sonolus-fastapi.pim4n-net.com"
 
 [project.optional-dependencies]
@@ -49,6 +49,11 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["sonolus_fastapi"]
+
+[tool.uv.workspace]
+members = [
+    "test",
+]
 
 [dependency-groups]
 dev = [
