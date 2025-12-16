@@ -22,7 +22,6 @@ sonolus = Sonolus(
     dev=True, # 開発モード Development mode
 )
 
-
 # ---------------------------------------- 
 
 # PostItemの例 Example of PostItem

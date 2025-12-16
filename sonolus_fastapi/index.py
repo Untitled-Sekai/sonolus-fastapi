@@ -61,6 +61,8 @@ class Sonolus:
         
         self._handlers: dict[ItemType, dict[str, object]] = {}
         self._server_handlers: dict[str, object] = {}
+        self._repository_paths: List[str] = []
+        
         self.server = ServerNamespace(self)
         self.level = ItemNamespace(self, ItemType.level)
         self.skin = ItemNamespace(self, ItemType.skin)
@@ -71,11 +73,13 @@ class Sonolus:
         self.post = ItemNamespace(self, ItemType.post)
         self.replay = ItemNamespace(self, ItemType.replay)
 
-        # APIルーターを初期化・登録
+        self.session_store = session_store or MemorySessionStore()
+        
+        # リポジトリファイルを提供するカスタムエンドポイントを先に追加
+        self._setup_repository_handler()
+        
         self.api = SonolusApi(self)
         self.api.register(self.app)
-        
-        self.session_store = session_store or MemorySessionStore()
 
         @self.app.middleware('http')
         async def sonolus_version_middleware(request: Request, call_next):
@@ -117,6 +121,24 @@ class Sonolus:
         
     def get_server_handler(self, kind: str):
         return self._server_handlers.get(kind)
+    
+    def _setup_repository_handler(self):
+        """リポジトリファイルを提供するハンドラーをセットアップ"""
+        from fastapi import HTTPException
+        from fastapi.responses import FileResponse
+        import os
+        
+        @self.app.get("/sonolus/repository/{file_hash}")
+        async def get_repository_file(file_hash: str):
+            """リポジトリファイルを検索して提供"""
+            # 各リポジトリパスでファイルを検索
+            for repo_path in self._repository_paths:
+                file_path = os.path.join(repo_path, file_hash)
+                if os.path.exists(file_path) and os.path.isfile(file_path):
+                    return FileResponse(file_path)
+            
+            # ファイルが見つからない場合は404エラー
+            raise HTTPException(status_code=404, detail="File not found")
 
     class ItemMemory:
         Background = BackgroundMemory
@@ -136,7 +158,9 @@ class Sonolus:
         repository_path = os.path.join(path, 'repository')
         db_path = os.path.join(path, 'db.json')
         set_pack_memory(db_path)
-        self.app.mount('/sonolus/repository', StaticFiles(directory=repository_path), name="repository")
+        
+        if repository_path not in self._repository_paths:
+            self._repository_paths.append(repository_path)
             
     def run(self):
         import uvicorn
