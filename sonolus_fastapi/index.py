@@ -18,6 +18,7 @@ from .utils.server_namespace import ServerNamespace
 from .utils.pack import set_pack_memory
 from .utils.context import SonolusContext
 from .utils.query import Query
+from .utils.session import SessionStore, MemorySessionStore
 from .router.sonolus_api import SonolusApi
 
 class Sonolus:
@@ -28,6 +29,7 @@ class Sonolus:
         address: str,
         port: int,
         dev: bool = False,
+        session_store: Optional[SessionStore] = None,
         level_search: Optional[ServerForm] = None,
         skin_search: Optional[ServerForm] = None,
         background_search: Optional[ServerForm] = None,
@@ -72,6 +74,17 @@ class Sonolus:
         # APIルーターを初期化・登録
         self.api = SonolusApi(self)
         self.api.register(self.app)
+        
+        self.session_store = session_store or MemorySessionStore()
+
+        @self.app.middleware('http')
+        async def sonolus_version_middleware(request: Request, call_next):
+            response = await call_next(request)
+            
+            if request.url.path.startswith('/sonolus'):
+                response.headers['Sonolus-Version'] = self.version
+            
+            return response
 
         if enable_cors:
             self.app.add_middleware(
