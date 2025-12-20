@@ -119,13 +119,11 @@ async def post_list(ctx, query):
     """
     items = sonolus.items.post.list()
 
-    # keywords search - 辞書形式のqueryに対応
     if isinstance(query, dict) and 'keywords' in query and query['keywords']:
         items = [
             i for i in items
             if query['keywords'].lower() in i.title.lower()
         ]
-    # Pydanticモデル形式のqueryに対応
     elif hasattr(query, 'keywords') and query.keywords:
         items = [
             i for i in items
