@@ -1,5 +1,4 @@
 # example2.py
-# json backend test
 
 import time
 from sonolus_fastapi import Sonolus
