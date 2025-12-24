@@ -24,7 +24,7 @@ from .utils.session import SessionStore, MemorySessionStore
 from .router.sonolus_api import SonolusApi
 
 class Sonolus:
-    Kind = Literal["info", "list", "detail"]
+    Kind = Literal["info", "list", "detail", "actions"]
     
     def __init__(
         self,
