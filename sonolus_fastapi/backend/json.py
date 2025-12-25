@@ -31,11 +31,12 @@ class JsonItemStore(Generic[T]):
         
         return self.item_cls.model_validate(raw)
     
-    def list(self) -> List[T]:
-        return [
+    def list(self, limit: int = 20, offset: int = 0) -> List[T]:
+        items = [
             self.item_cls.model_validate(v)
             for v in self._data.values()
         ]
+        return items[offset:offset + limit]
         
     def add(self, item: T):
         self._data[item.name] = item.model_dump()
@@ -47,3 +48,20 @@ class JsonItemStore(Generic[T]):
             self._save()
         else:
             pass
+    
+    def update(self, item: T):
+        self._data[item.name] = item.model_dump()
+        self._save()
+    
+    def map(self) -> Dict[str, T]:
+        return {
+            name: self.item_cls.model_validate(data)
+            for name, data in self._data.items()
+        }
+    
+    def get_many(self, names: List[str]) -> List[T]:
+        result = []
+        for name in names:
+            if name in self._data:
+                result.append(self.item_cls.model_validate(self._data[name]))
+        return result

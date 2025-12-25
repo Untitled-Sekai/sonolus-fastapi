@@ -36,11 +36,11 @@ class DatabaseItemStore(Generic[T]):
             
             return self.item_cls.model_validate(json.loads(row[0]))
         
-    def list(self) -> List[T]:
+    def list(self, limit: int = 20, offset: int = 0) -> List[T]:
         with self.engine.begin() as conn:
             rows = conn.execute(
-                text("SELECT data FROM items WHERE item_type = :item_type"),
-                {"item_type": self.item_type}
+                text("SELECT data FROM items WHERE item_type = :item_type LIMIT :limit OFFSET :offset"),
+                {"item_type": self.item_type, "limit": limit, "offset": offset}
             ).fetchall()
 
         return [
@@ -67,3 +67,45 @@ class DatabaseItemStore(Generic[T]):
                 text("DELETE FROM items WHERE name=:name AND item_type=:item_type"),
                 {"name": name, "item_type": self.item_type}
             )
+            
+    def update(self, item: T):
+        data = json.dumps(item.model_dump(), ensure_ascii=False)
+        
+        with self.engine.begin() as conn:
+            conn.execute(
+                text("UPDATE items SET data=:data WHERE name=:name AND item_type=:item_type"),
+                {"name": item.name, "item_type": self.item_type, "data": data}
+            )
+        
+    def map(self) -> dict[str, T]:
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text("SELECT name, data FROM items WHERE item_type = :item_type"),
+                {"item_type": self.item_type}
+            ).fetchall()
+            
+        return {
+            row[0]: self.item_cls.model_validate(json.loads(row[1]))
+            for row in rows
+        }
+        
+    def get_many(self, names: List[str]) -> List[T]:
+        if not names:
+            return []
+            
+        # IN句用にプレースホルダを作成
+        placeholders = ",".join(f":name_{i}" for i in range(len(names)))
+        params = {f"name_{i}": name for i, name in enumerate(names)}
+        params["item_type"] = self.item_type
+        
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                text(f"SELECT data FROM items WHERE name IN ({placeholders}) AND item_type = :item_type"),
+                params
+            ).fetchall()
+            
+        return [
+            self.item_cls.model_validate(json.loads(row[0]))
+            for row in rows
+        ]
+            
