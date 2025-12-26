@@ -16,9 +16,31 @@ from sonolus_fastapi.model.Request.authenticate import ServerAuthenticateRequest
 from sonolus_fastapi.model.Response.authenticate import ServerAuthenticateResponse
 from sonolus_fastapi.utils.generate import generate_random_string
 from sonolus_fastapi.utils.session import MemorySessionStore
+from sonolus_fastapi.utils.context import SonolusContext
+from sonolus_fastapi.model.ServerOption import ServerToggleOption, ServerTextOption
 from sonolus_fastapi.pack import freepackpath
 
 # Sonolusインスタンスを作成 Create Sonolus instance
+
+config_option = [
+    ServerToggleOption(
+        query="test",
+        name="Test Option",
+        required=False,
+        type="toggle",
+        def_=False
+    ),
+    ServerTextOption(
+        query='keywords',
+        name=SonolusText.KEYWORDS,
+        required=False,
+        type='text',
+        def_='',
+        placeholder=SonolusText.KEYWORDS_PLACEHOLDER,
+        limit=100,
+        shortcuts=[]
+    ),
+]
 
 sonolus = Sonolus(
     address='https://example.com', # サーバーアドレスを指定してください Specify your server address
@@ -28,6 +50,9 @@ sonolus = Sonolus(
     session_store=MemorySessionStore(), # セッションストアを指定 Specify session store
     backend=StorageBackend.MEMORY, # ストレージバックエンドを指定 Specify storage backend
 )
+
+# Configuration optionsを登録
+sonolus.register_configuration_options(config_option)
 
 # ---------------------------------------- 
 
@@ -60,7 +85,7 @@ sonolus.load(freepackpath) # Sonolus packのパスを指定してください Sp
 # -- ハンドラーの登録 Register handlers
 
 @sonolus.server.server_info(SonolusServerInfo) # サーバー情報ハンドラーを登録 Register server info handler
-async def get_server_info(ctx):
+async def get_server_info(ctx: SonolusContext): # サーバー情報を取得 Get server info
     return SonolusServerInfo(
         title="Example Sonolus Server",
         description="This is an example Sonolus server.",
@@ -76,7 +101,7 @@ async def get_server_info(ctx):
             SonolusButton(type=SonolusButtonType.CONFIGURATION)
         ],
         configuration=SonolusConfiguration(
-            options=[]
+            options=config_option
         ),
         banner=None,
     )
@@ -94,7 +119,7 @@ async def authenticate(ctx: SonolusContext[ServerAuthenticateRequest]): # 認証
     )
 
 @sonolus.post.detail(ServerItemDetails) # Postの詳細ハンドラーを登録 Register Post detail handler
-async def get_post_detail(ctx, name: str): # Postの詳細を取得 Get Post details
+async def get_post_detail(ctx: SonolusContext, name: str): # Postの詳細を取得 Get Post details
     post = sonolus.items.post.get(name) # メモリからPostItemを取得 Get PostItem from memory
     
     if post is None: # PostItemが見つからない場合 If PostItem not found
@@ -115,7 +140,7 @@ async def get_post_detail(ctx, name: str): # Postの詳細を取得 Get Post det
     
     
 @sonolus.background.info(ServerItemInfo)
-async def get_background_info(ctx): # Backgroundの情報を取得 Get Background info
+async def get_background_info(ctx: SonolusContext): # Backgroundの情報を取得 Get Background info
     
     background_section = BackgroundSection(
         title=SonolusText.BACKGROUND,
@@ -131,16 +156,18 @@ async def get_background_info(ctx): # Backgroundの情報を取得 Get Backgroun
     )
     
 @sonolus.background.list(ServerItemList) # Backgroundのリストハンドラーを登録 Register Background list handler
-async def get_background_list(ctx, query): # Backgroundのリストを取得 Get Background list
+async def get_background_list(ctx: SonolusContext, query): # Backgroundのリストを取得 Get Background list
     backgrounds = sonolus.items.background.list() # メモリから全てのBackgroundItemを取得 Get all BackgroundItems from memory
-    
+    print(f"Localization: {ctx.localization}")  # "ja" が出力される
+    print(f"Options: {ctx.options}")  # オプションの値を出力
+    print(query)
     return ServerItemList( # ServerItemListを返す Return ServerItemList
         pageCount=1, # ページ数 Page count
         items=backgrounds, # BackgroundItemのリスト List of BackgroundItems
     )
     
 @sonolus.background.detail(ServerItemDetails) # Backgroundの詳細ハンドラーを登録 Register Background detail handler
-async def get_background_detail(ctx, name: str): # Backgroundの詳細を取得 Get Background
+async def get_background_detail(ctx: SonolusContext, name: str): # Backgroundの詳細を取得 Get Background
     background = sonolus.items.background.get(name) # メモリからBackgroundItemを取得 Get BackgroundItem from memory
     
     if background is None: # BackgroundItemが見つからない場合 If BackgroundItem not found
@@ -165,12 +192,12 @@ def huga():
 
 #  SPA配信
 
-spa = SonolusSpa(
-    sonolus.app,
-    path="./test", # SPAの静的ファイルのパス Path to SPA static files
-    mount="/" # マウントパス Mount path
-)
+# spa = SonolusSpa(
+#     sonolus.app,
+#     path="./test", # SPAの静的ファイルのパス Path to SPA static files
+#     mount="/" # マウントパス Mount path
+# )
 
 if __name__ == "__main__":
-    spa.mount_spa() # SPAをマウントします Mount the SPA
+    # spa.mount_spa() # SPAをマウントします Mount the SPA
     sonolus.run() # サーバーを起動します Start the server

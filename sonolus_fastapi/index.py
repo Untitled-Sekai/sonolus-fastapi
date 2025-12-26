@@ -62,6 +62,8 @@ class Sonolus:
         self._handlers: dict[ItemType, dict[str, object]] = {}
         self._server_handlers: dict[str, object] = {}
         self._repository_paths: List[str] = []
+        self._configuration_options: List[str] = []  # オプションのクエリ名を保存
+        self._configuration_option_types: Dict[str, str] = {}  # オプションの型を保存
         
         self.server = ServerNamespace(self)
         self.level = ItemNamespace(self, ItemType.level)
@@ -101,9 +103,35 @@ class Sonolus:
             )
             
     def build_context(self, request: Request, request_body: Any = None) -> SonolusContext:
+        # 設定されたオプションの値をクエリパラメータから取得し、型変換を行う
+        options = {}
+        for option_query in self._configuration_options:
+            if option_query in request.query_params:
+                raw_value = request.query_params.get(option_query)
+                option_type = self._configuration_option_types.get(option_query)
+                
+                # 型に応じて変換
+                if option_type == "toggle":
+                    # toggleは "0" / "1" の文字列なのでbooleanに変換
+                    options[option_query] = raw_value == "1" or raw_value.lower() == "true"
+                elif option_type == "slider":
+                    # sliderは数値なのでint/floatに変換を試行
+                    try:
+                        if '.' in raw_value:
+                            options[option_query] = float(raw_value)
+                        else:
+                            options[option_query] = int(raw_value)
+                    except ValueError:
+                        options[option_query] = raw_value  # 変換失敗時は文字列のまま
+                else:
+                    # その他（text, textArea, select, file等）は文字列のまま
+                    options[option_query] = raw_value
+        
         return SonolusContext(
             user_session=request.headers.get("Sonolus-Session"),
             request=request_body,
+            localization=request.query_params.get("localization"),
+            options=options if options else None,
             is_dev=self.dev
         )
         
@@ -133,6 +161,16 @@ class Sonolus:
         
     def get_server_handler(self, kind: str):
         return self._server_handlers.get(kind)
+    
+    def register_configuration_options(self, options: List):
+        """Configuration optionsを登録し、クエリ名を保存"""
+        if options:
+            for option in options:
+                if hasattr(option, 'query'):
+                    self._configuration_options.append(option.query)
+                    # オプションの型を保存
+                    if hasattr(option, 'type'):
+                        self._configuration_option_types[option.query] = option.type
     
     def _setup_repository_handler(self):
         """リポジトリファイルを提供するハンドラーをセットアップ"""
