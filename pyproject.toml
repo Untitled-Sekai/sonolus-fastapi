@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sonolus-fastapi"
-version = "0.2.1"
+version = "0.2.2"
 description = "FastAPI wrapper for Sonolus server creation and management This project is still under development."
 readme = "README.md"
 requires-python = ">=3.13"
