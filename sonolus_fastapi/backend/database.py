@@ -103,12 +103,14 @@ class DatabaseItemStore(Generic[T]):
         
         with self.engine.connect() as conn:
             rows = conn.execute(
-                text(f"SELECT data FROM items WHERE name IN ({placeholders}) AND item_type = :item_type"),
+                text(f"SELECT name, data FROM items WHERE name IN ({placeholders}) AND item_type = :item_type"),
                 params
             ).fetchall()
-            
-        return [
-            self.item_cls.model_validate(json.loads(row[0]))
+        
+        items_dict = {
+            row[0]: self.item_cls.model_validate(json.loads(row[1]))
             for row in rows
-        ]
-            
+        }
+        
+        # 渡された順序でアイテムを返す
+        return [items_dict[name] for name in names if name in items_dict]
