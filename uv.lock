@@ -712,7 +712,7 @@ wheels = [
 
 [[package]]
 name = "sonolus-fastapi"
-version = "0.2.2"
+version = "0.2.4"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
