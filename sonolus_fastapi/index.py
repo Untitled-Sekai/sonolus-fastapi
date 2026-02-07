@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any, Literal
-from .model.items import (
+from sonolus_models import (
     BackgroundItem,
     EffectItem,
     ParticleItem,
@@ -12,9 +12,9 @@ from .model.items import (
     PostItem
 )
 from .backend import StorageBackend, StoreFactory
-from .model.ServerOption import ServerForm
+from sonolus_models import ServerForm
 from .search.registry import SearchRegistry
-from .model.items import ItemType
+from sonolus_models import ItemType
 from .utils.item_namespace import ItemNamespace
 from .utils.server_namespace import ServerNamespace
 from .utils.pack import set_pack_memory
