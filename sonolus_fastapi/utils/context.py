@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from typing import Optional, TypeVar, Generic, Dict, Union
-from ..model.ServerOption import ServerOption
 
 T = TypeVar('T')
 

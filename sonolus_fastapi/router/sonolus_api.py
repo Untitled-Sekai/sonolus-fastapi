@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException, FastAPI
 from typing import TYPE_CHECKING
-from sonolus_fastapi.model.items import ItemType
+from sonolus_models.items import ItemType
 from typing import Literal
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class SonolusApi:
     # -------------------------
     
     async def _authenticate(self, request: Request):
-        from sonolus_fastapi.model.Request.authenticate import ServerAuthenticateRequest
+        from sonolus_models import ServerAuthenticateRequest
         auth_request = await self._parse_request_body(request, ServerAuthenticateRequest)
         
         ctx = self.sonolus.build_context(request, auth_request)

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from sonolus_fastapi.model.items import ItemType
+from sonolus_models import ItemType
 from .item_slot import InfoSlot, ListSlot, DetailSlot, ActionSlot
 from typing import TYPE_CHECKING
 

@@ -1,11 +1,11 @@
 import json
 from typing import TYPE_CHECKING
-from ..model.items.background import BackgroundItem
-from ..model.items.effect import EffectItem
-from ..model.items.particle import ParticleItem
-from ..model.items.skin import SkinItem
-from ..model.items.post import PostItem
-from ..model.pack import PackModel
+from sonolus_models.items import BackgroundItem
+from sonolus_models.items import EffectItem
+from sonolus_models.items import ParticleItem
+from sonolus_models.items import SkinItem
+from sonolus_models.items import PostItem
+from sonolus_models import PackModel
 from ..backend import StorageBackend
 
 if TYPE_CHECKING:

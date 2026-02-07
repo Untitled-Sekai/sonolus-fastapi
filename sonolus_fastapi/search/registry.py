@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Dict, Type
 from pydantic import BaseModel
-from ..model.ServerOption import ServerForm
+from sonolus_models import ServerForm
 from .query_model import create_query_model
 
 @dataclass

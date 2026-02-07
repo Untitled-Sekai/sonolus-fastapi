@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any, Literal
-from .model.items import (
+from sonolus_models.items import (
     BackgroundItem,
     EffectItem,
     ParticleItem,
@@ -12,9 +12,9 @@ from .model.items import (
     PostItem
 )
 from .backend import StorageBackend, StoreFactory
-from .model.ServerOption import ServerForm
+from sonolus_models import ServerForm
 from .search.registry import SearchRegistry
-from .model.items import ItemType
+from sonolus_models.items import ItemType
 from .utils.item_namespace import ItemNamespace
 from .utils.server_namespace import ServerNamespace
 from .utils.pack import set_pack_memory
@@ -190,14 +190,25 @@ class Sonolus:
             # ファイルが見つからない場合は404エラー
             raise HTTPException(status_code=404, detail="File not found")
             
-    def load(self, path: str):
+    def load(self, path: str | List[str]):
         """
         Sonolus packでパックされたものを読み込みます。
         Load a pack packed with Sonolus pack.
         """
         import os
+        
+        # pathが配列の場合は各パスに対して再帰的にloadを呼び出す
+        if isinstance(path, list):
+            for p in path:
+                self.load(p)
+            return
+        
         repository_path = os.path.join(path, 'repository')
         db_path = os.path.join(path, 'db.json')
+
+        if not os.path.exists(db_path):
+            raise FileNotFoundError(f"db.json not found in pack path: {path}")
+        
         set_pack_memory(db_path, self)
         
         if repository_path not in self._repository_paths:
@@ -205,6 +216,11 @@ class Sonolus:
             
     def run(self):
         import uvicorn
+        print("----------------------------------------")
+        print("This is recommended to be used in development only.")
+        print("In production enviroments, we recommend using the FastAPI class in sonolus.app and running gunicorn or uvicorn directly.")
+        print("----------------------------------------")
+        print(f"Sonolus version: {self.version}")
         print(f"Starting Sonolus server on port {self.port}...")
         uvicorn.run(self.app, host='0.0.0.0', port=self.port)
 
