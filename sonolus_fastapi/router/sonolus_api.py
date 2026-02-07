@@ -46,7 +46,7 @@ class SonolusApi:
     # -------------------------
     
     async def _authenticate(self, request: Request):
-        from sonolus_fastapi.model.Request.authenticate import ServerAuthenticateRequest
+        from sonolus_models import ServerAuthenticateRequest
         auth_request = await self._parse_request_body(request, ServerAuthenticateRequest)
         
         ctx = self.sonolus.build_context(request, auth_request)

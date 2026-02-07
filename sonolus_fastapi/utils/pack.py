@@ -5,7 +5,7 @@ from sonolus_models.items import EffectItem
 from sonolus_models.items import ParticleItem
 from sonolus_models.items import SkinItem
 from sonolus_models.items import PostItem
-from ..model.pack import PackModel
+from sonolus_models import PackModel
 from ..backend import StorageBackend
 
 if TYPE_CHECKING:

@@ -12,7 +12,7 @@ from sonolus_models.items import (
     PostItem
 )
 from .backend import StorageBackend, StoreFactory
-from .model.ServerOption import ServerForm
+from sonolus_models import ServerForm
 from .search.registry import SearchRegistry
 from sonolus_models.items import ItemType
 from .utils.item_namespace import ItemNamespace
