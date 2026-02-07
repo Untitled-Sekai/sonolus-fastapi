@@ -1,9 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, TypeVar, Generic, Dict, Union
-<<<<<<< HEAD
 from sonolus_models import ServerOption
-=======
->>>>>>> 9439436c2dd7c09a2d194011667d5b8af76f4bde
 
 T = TypeVar('T')
 
