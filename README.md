@@ -2,7 +2,11 @@
 
 このプロジェクトはまだ開発途中です。
 
+基礎的な機能はすでに使えます
+
 This project is still under development.
+
+Basic functions are already available.
 
 ## Install
 
@@ -17,10 +21,8 @@ pip insatll sonolus-fastapi
 
 Please read this.
 
-
-`https://sonolus-fastapi.pim4n-net.com`
+https://sonolus-fastapi.pim4n-net.com
 
 ## Example
 
 [example.py](./example.py)
-[example2.py](./example2.py)
