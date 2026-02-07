@@ -1,4 +1,4 @@
-from ..model.userprofile import ServiceUserProfile
+from sonolus_models import ServiceUserProfile
 from typing import Optional, Protocol
 
 class SessionData:

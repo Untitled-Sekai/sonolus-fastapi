@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, create_model
 from typing import Optional, Type, List
-from ..model.ServerOption import ServerForm
+from sonolus_models import ServerForm
 
 def option_to_python_type(opt):
     """ServerOptionの型に基づいて適切なPython型を返す"""

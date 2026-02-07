@@ -25,6 +25,7 @@ classifiers = [
 dependencies = [
     "fastapi>=0.124.4",
     "pydantic>=2.12.5",
+    "sonolus-models==0.1.4",
     "sqlalchemy>=2.0.45",
     "uvicorn>=0.38.0",
 ]

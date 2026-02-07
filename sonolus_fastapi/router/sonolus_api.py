@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException, FastAPI
 from typing import TYPE_CHECKING
-from sonolus_fastapi.model.items import ItemType
+from sonolus_models.items import ItemType
 from typing import Literal
 
 if TYPE_CHECKING:
