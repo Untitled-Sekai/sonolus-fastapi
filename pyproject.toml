@@ -30,9 +30,6 @@ dependencies = [
     "uvicorn>=0.38.0",
 ]
 
-[project.scripts]
-sonolus-fastapi = "sonolus_fastapi.cli:main"
-
 [project.urls]
 Homepage = "https://sonolus-fastapi.pim4n-net.com"
 Repository = "https://github.com/Piliman22/sonolus-fastapi/"
