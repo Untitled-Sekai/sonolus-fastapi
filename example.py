@@ -3,21 +3,21 @@ import time
 from fastapi import HTTPException
 from sonolus_fastapi import Sonolus, SonolusSpa
 from sonolus_fastapi.backend import StorageBackend
-from sonolus_fastapi.model.text import SonolusText
-from sonolus_fastapi.model.icon import SonolusIcon
+from sonolus_models import SonolusText
+from sonolus_models import SonolusIcon
 from sonolus_fastapi.utils.context import SonolusContext
-from sonolus_fastapi.model.base import SonolusServerInfo, SonolusConfiguration, SonolusButton, SonolusButtonType
-from sonolus_fastapi.model.items.post import PostItem
-from sonolus_fastapi.model.ServerItemInfo import ServerItemInfo
-from sonolus_fastapi.model.ServerItemList import ServerItemList
-from sonolus_fastapi.model.sections import BackgroundSection
-from sonolus_fastapi.model.ServerItemDetails import ServerItemDetails
-from sonolus_fastapi.model.Request.authenticate import ServerAuthenticateRequest
-from sonolus_fastapi.model.Response.authenticate import ServerAuthenticateResponse
+from sonolus_models import SonolusItemButtonType, ServerInfoAuthenticationButton, ServerInfoItemButton, ServerInfoConfigurationButton, SonolusServerInfo, SonolusConfiguration
+from sonolus_models import PostItem
+from sonolus_models import ServerItemInfo
+from sonolus_models import ServerItemList
+from sonolus_models import BackgroundSection
+from sonolus_models import ServerItemDetails
+from sonolus_models import ServerAuthenticateRequest
+from sonolus_models import ServerAuthenticateResponse, Srl
 from sonolus_fastapi.utils.generate import generate_random_string
 from sonolus_fastapi.utils.session import MemorySessionStore
 from sonolus_fastapi.utils.context import SonolusContext
-from sonolus_fastapi.model.ServerOption import ServerToggleOption, ServerTextOption
+from sonolus_models import ServerToggleOption, ServerTextOption, ServerOption, ServerItemCommunityInfo
 from sonolus_fastapi.pack import freepackpath
 
 # Sonolusインスタンスを作成 Create Sonolus instance
@@ -90,15 +90,16 @@ async def get_server_info(ctx: SonolusContext): # サーバー情報を取得 Ge
         title="Example Sonolus Server",
         description="This is an example Sonolus server.",
         buttons=[
-            SonolusButton(type=SonolusButtonType.AUTHENTICATION),
-            SonolusButton(type=SonolusButtonType.POST),
-            SonolusButton(type=SonolusButtonType.LEVEL),
-            SonolusButton(type=SonolusButtonType.SKIN),
-            SonolusButton(type=SonolusButtonType.BACKGROUND),
-            SonolusButton(type=SonolusButtonType.EFFECT),
-            SonolusButton(type=SonolusButtonType.PARTICLE),
-            SonolusButton(type=SonolusButtonType.ENGINE),
-            SonolusButton(type=SonolusButtonType.CONFIGURATION)
+            ServerInfoAuthenticationButton(type='authentication'),
+            ServerInfoItemButton(type='post'),
+            ServerInfoItemButton(type='level'),
+            ServerInfoItemButton(type='background'),
+            ServerInfoItemButton(type='effect'),
+            ServerInfoItemButton(type='skin'),
+            ServerInfoItemButton(type='particle'),
+            ServerInfoItemButton(type='engine'),
+            ServerInfoItemButton(type='user'),
+            ServerInfoConfigurationButton(type='configuration'),
         ],
         configuration=SonolusConfiguration(
             options=config_option
@@ -187,6 +188,10 @@ async def get_background_detail(ctx: SonolusContext, name: str): # Backgroundの
 @sonolus.app.get("/hoge") # ルートエンドポイントを追加 Add root endpoint
 def huga():
     return {"message": "huga"}
+
+# ----------------------------------------
+
+
 
 # ----------------------------------------
 

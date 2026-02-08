@@ -1,6 +1,7 @@
 from __future__ import annotations
 from sonolus_models import ItemType
 from .item_slot import InfoSlot, ListSlot, DetailSlot, ActionSlot
+from .community_namespace import CommunityNamespace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -12,3 +13,4 @@ class ItemNamespace:
         self.list = ListSlot(sonolus, item_type)
         self.detail = DetailSlot(sonolus, item_type)
         self.actions = ActionSlot(sonolus, item_type)
+        self.community = CommunityNamespace(sonolus, item_type)

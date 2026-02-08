@@ -76,3 +76,52 @@ class HandlerDescriptor(Generic[T]):
 
     async def call(self, *args) -> T:
         return await self.fn(*args)
+
+# Community Handlers
+class CommunityInfoHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str) -> T:
+        return await self.fn(ctx, item_name)
+
+class CommunityCommentsHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, Query], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, query: Query) -> T:
+        return await self.fn(ctx, item_name, query)
+
+class CommunityActionsHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, Any], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, action_request: Any) -> T:
+        return await self.fn(ctx, item_name, action_request)
+
+class CommunityUploadHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, str, list], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, upload_key: str, files: list) -> T:
+        return await self.fn(ctx, item_name, upload_key, files)
+
+class CommunityCommentActionsHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, str, Any], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, comment_name: str, action_request: Any) -> T:
+        return await self.fn(ctx, item_name, comment_name, action_request)
+
+class CommunityCommentUploadHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, str, str, list], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, comment_name: str, upload_key: str, files: list) -> T:
+        return await self.fn(ctx, item_name, comment_name, upload_key, files)

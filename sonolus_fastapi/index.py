@@ -9,7 +9,8 @@ from sonolus_models import (
     SkinItem,
     EngineItem,
     LevelItem,
-    PostItem
+    PostItem,
+    UserItem
 )
 from .backend import StorageBackend, StoreFactory
 from sonolus_models import ServerForm
@@ -32,7 +33,7 @@ class Sonolus:
         port: int,
         dev: bool = False,
         session_store: Optional[SessionStore] = None,
-        version: str = "1.0.2",
+        version: str = "1.1.0",
         enable_cors: bool = True,
         backend: StorageBackend = StorageBackend.MEMORY,
         **backend_options,
@@ -57,7 +58,12 @@ class Sonolus:
         self.address = address
         self.dev = dev
         self.version = version
-        self.items = ItemStores(factory)
+        
+        # コメントストアを作成
+        from .backend import CommunityCommentStore
+        self.community_comments = CommunityCommentStore(backend, **backend_options)
+        
+        self.items = ItemStores(factory, self.community_comments)
         
         self._handlers: dict[ItemType, dict[str, object]] = {}
         self._server_handlers: dict[str, object] = {}
@@ -74,6 +80,7 @@ class Sonolus:
         self.particle = ItemNamespace(self, ItemType.particle)
         self.post = ItemNamespace(self, ItemType.post)
         self.replay = ItemNamespace(self, ItemType.replay)
+        self.user = ItemNamespace(self, ItemType.user)
 
         self.session_store = session_store or MemorySessionStore()
         self.search = SearchRegistry()
@@ -155,12 +162,18 @@ class Sonolus:
         
     def _register_server_handler(self, kind: str, descriptor: object):
         self._server_handlers[kind] = descriptor
+    
+    def _register_community_handler(self, item_type: ItemType, kind: str, descriptor: object):
+        self._handlers.setdefault(item_type, {}).setdefault("community", {})[kind] = descriptor
         
     def get_handler(self, item_type: ItemType, kind: Kind):
         return self._handlers.get(item_type, {}).get(kind)
         
     def get_server_handler(self, kind: str):
         return self._server_handlers.get(kind)
+    
+    def get_community_handler(self, item_type: ItemType, kind: str):
+        return self._handlers.get(item_type, {}).get("community", {}).get(kind)
     
     def register_configuration_options(self, options: List):
         """Configuration optionsを登録し、クエリ名を保存"""
@@ -270,7 +283,7 @@ class SonolusSpa:
 # -------------------------
 
 class ItemStores:
-    def __init__(self, factory: StoreFactory):
+    def __init__(self, factory: StoreFactory, comment_store=None):
         self.post = factory.create(PostItem)
         self.level = factory.create(LevelItem)
         self.engine = factory.create(EngineItem)
@@ -278,6 +291,19 @@ class ItemStores:
         self.background = factory.create(BackgroundItem)
         self.effect = factory.create(EffectItem)
         self.particle = factory.create(ParticleItem)
+        self.user = factory.create(UserItem)
+        
+        # コメントアクセサ
+        if comment_store is not None:
+            from .backend.community_accessor import ItemCommentAccessor
+            self.level_comments = ItemCommentAccessor(ItemType.level, comment_store)
+            self.skin_comments = ItemCommentAccessor(ItemType.skin, comment_store)
+            self.background_comments = ItemCommentAccessor(ItemType.background, comment_store)
+            self.effect_comments = ItemCommentAccessor(ItemType.effect, comment_store)
+            self.particle_comments = ItemCommentAccessor(ItemType.particle, comment_store)
+            self.engine_comments = ItemCommentAccessor(ItemType.engine, comment_store)
+            self.post_comments = ItemCommentAccessor(ItemType.post, comment_store)
+            self.replay_comments = ItemCommentAccessor(ItemType.replay, comment_store)
     
     def override(self, **stores):
         for key, store in stores.items():
