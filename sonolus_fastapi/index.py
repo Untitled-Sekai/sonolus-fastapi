@@ -25,7 +25,7 @@ from .utils.session import SessionStore, MemorySessionStore
 from .router.sonolus_api import SonolusApi
 
 class Sonolus:
-    Kind = Literal["info", "list", "detail", "actions"]
+    Kind = Literal["info", "list", "detail", "actions", "upload", "result_info", "result_submit", "result_upload"]
     
     def __init__(
         self,
@@ -60,10 +60,11 @@ class Sonolus:
         self.version = version
         
         # コメントストアを作成
-        from .backend import CommunityCommentStore
+        from .backend import CommunityCommentStore, LeaderboardRecordStore
         self.community_comments = CommunityCommentStore(backend, **backend_options)
+        self.leaderboard_records = LeaderboardRecordStore(backend, **backend_options)
         
-        self.items = ItemStores(factory, self.community_comments)
+        self.items = ItemStores(factory, self.community_comments, self.leaderboard_records)
         
         self._handlers: dict[ItemType, dict[str, object]] = {}
         self._server_handlers: dict[str, object] = {}
@@ -165,6 +166,9 @@ class Sonolus:
     
     def _register_community_handler(self, item_type: ItemType, kind: str, descriptor: object):
         self._handlers.setdefault(item_type, {}).setdefault("community", {})[kind] = descriptor
+    
+    def _register_leaderboard_handler(self, item_type: ItemType, kind: str, descriptor: object):
+        self._handlers.setdefault(item_type, {}).setdefault("leaderboard", {})[kind] = descriptor
         
     def get_handler(self, item_type: ItemType, kind: Kind):
         return self._handlers.get(item_type, {}).get(kind)
@@ -174,6 +178,9 @@ class Sonolus:
     
     def get_community_handler(self, item_type: ItemType, kind: str):
         return self._handlers.get(item_type, {}).get("community", {}).get(kind)
+    
+    def get_leaderboard_handler(self, item_type: ItemType, kind: str):
+        return self._handlers.get(item_type, {}).get("leaderboard", {}).get(kind)
     
     def register_configuration_options(self, options: List):
         """Configuration optionsを登録し、クエリ名を保存"""
@@ -283,7 +290,7 @@ class SonolusSpa:
 # -------------------------
 
 class ItemStores:
-    def __init__(self, factory: StoreFactory, comment_store=None):
+    def __init__(self, factory: StoreFactory, comment_store=None, record_store=None):
         self.post = factory.create(PostItem)
         self.level = factory.create(LevelItem)
         self.engine = factory.create(EngineItem)
@@ -304,6 +311,18 @@ class ItemStores:
             self.engine_comments = ItemCommentAccessor(ItemType.engine, comment_store)
             self.post_comments = ItemCommentAccessor(ItemType.post, comment_store)
             self.replay_comments = ItemCommentAccessor(ItemType.replay, comment_store)
+        
+        # リーダーボードアクセサ
+        if record_store is not None:
+            from .backend.leaderboard_accessor import ItemLeaderboardAccessor
+            self.level_leaderboards = ItemLeaderboardAccessor(ItemType.level, record_store)
+            self.skin_leaderboards = ItemLeaderboardAccessor(ItemType.skin, record_store)
+            self.background_leaderboards = ItemLeaderboardAccessor(ItemType.background, record_store)
+            self.effect_leaderboards = ItemLeaderboardAccessor(ItemType.effect, record_store)
+            self.particle_leaderboards = ItemLeaderboardAccessor(ItemType.particle, record_store)
+            self.engine_leaderboards = ItemLeaderboardAccessor(ItemType.engine, record_store)
+            self.post_leaderboards = ItemLeaderboardAccessor(ItemType.post, record_store)
+            self.replay_leaderboards = ItemLeaderboardAccessor(ItemType.replay, record_store)
     
     def override(self, **stores):
         for key, store in stores.items():

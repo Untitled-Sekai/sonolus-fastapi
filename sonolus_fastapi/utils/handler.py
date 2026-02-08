@@ -65,6 +65,38 @@ class ActionHandlerDescriptor(Generic[T]):
     async def call(self, ctx: Ctx, name: str, action_request: type[T]) -> T:
         return await self.fn(ctx, name, action_request)
 
+class UploadHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, str, list], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, name: str, upload_key: str, files: list) -> T:
+        return await self.fn(ctx, name, upload_key, files)
+
+class ResultInfoHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: InfoFn[T], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx) -> T:
+        return await self.fn(ctx)
+
+class ResultSubmitHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, Any], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, submit_request: Any) -> T:
+        return await self.fn(ctx, submit_request)
+
+class ResultUploadHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, list], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, upload_key: str, files: list) -> T:
+        return await self.fn(ctx, upload_key, files)
+
 class HandlerDescriptor(Generic[T]):
     def __init__(
         self,
@@ -125,3 +157,28 @@ class CommunityCommentUploadHandlerDescriptor(Generic[T]):
 
     async def call(self, ctx: Ctx, item_name: str, comment_name: str, upload_key: str, files: list) -> T:
         return await self.fn(ctx, item_name, comment_name, upload_key, files)
+
+# Leaderboard Handlers
+class LeaderboardDetailHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, str], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, leaderboard_name: str) -> T:
+        return await self.fn(ctx, item_name, leaderboard_name)
+
+class LeaderboardRecordsHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, str, Query], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, leaderboard_name: str, query: Query) -> T:
+        return await self.fn(ctx, item_name, leaderboard_name, query)
+
+class LeaderboardRecordDetailHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx, str, str, str], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx, item_name: str, leaderboard_name: str, record_name: str) -> T:
+        return await self.fn(ctx, item_name, leaderboard_name, record_name)

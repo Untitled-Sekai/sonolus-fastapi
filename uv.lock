@@ -763,7 +763,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.0.290" },
-    { name = "sonolus-models", specifier = "==0.2.4.2" },
+    { name = "sonolus-models", specifier = ">=0.2.4.2" },
     { name = "sqlalchemy", specifier = ">=2.0.45" },
     { name = "twine", specifier = ">=6.2.0" },
     { name = "uvicorn", specifier = ">=0.38.0" },
