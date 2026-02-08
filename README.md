@@ -1,13 +1,5 @@
 # Sonolus-FastAPI
 
-このプロジェクトはまだ開発途中です。
-
-基礎的な機能はすでに使えます
-
-This project is still under development.
-
-Basic functions are already available.
-
 ## Install
 
 ```bash
