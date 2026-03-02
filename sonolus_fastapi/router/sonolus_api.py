@@ -27,18 +27,25 @@ class SonolusApi:
         # -------------------------
 
 
+        # -------------------------
+        # Sonolus Basic API
+        # -------------------------
+
+
         self.router.post('/authenticate')(self._authenticate)
         self.router.get('/info')(self._server_info)
         self.router.get("/{item_type}/info")(self._info)
         self.router.get("/{item_type}/list")(self._list)
-        self.router.get("/{item_type}/{name}")(self._detail)
-        self.router.post("/{item_type}/{name}/submit")(self._actions)
-        self.router.post("/{item_type}/{name}/upload")(self._upload)
-
-        # Result API (only for levels) 
+        
+        # Result API (only for levels) - Must be before generic routes
         self.router.get("/{item_type}/result/info")(self._result_info)
         self.router.post("/{item_type}/result/submit")(self._result_submit)
         self.router.post("/{item_type}/result/upload")(self._result_upload)
+        
+        # Generic item routes
+        self.router.get("/{item_type}/{name}")(self._detail)
+        self.router.post("/{item_type}/{name}/submit")(self._actions)
+        self.router.post("/{item_type}/{name}/upload")(self._upload)
 
         # -------------------------
         # Sonolus Extended API
@@ -70,8 +77,11 @@ class SonolusApi:
             if model_class:
                 return model_class.model_validate(body)
             return body
-        except Exception:
-            return None
+        except Exception as e:
+            import traceback
+            print(f"Error parsing request body: {e}")
+            print(traceback.format_exc())
+            raise HTTPException(400, f"Invalid request body: {str(e)}")
     
 
     # -------------------------
@@ -196,8 +206,32 @@ class SonolusApi:
         if item_type != ItemType.level:
             raise HTTPException(404, "result submit is only available for levels")
         
+        from sonolus_models import ServerSubmitLevelResultRequest
+        from sonolus_fastapi.utils.replay import normalize_replay_item
+        
         ctx = self.sonolus.build_context(request)
-        submit_request = await self._parse_request_body(request)
+        
+        # Get raw request body first
+        try:
+            body = await request.json()
+        except Exception as e:
+            import traceback
+            print(f"Error parsing request body: {e}")
+            print(traceback.format_exc())
+            raise HTTPException(400, f"Invalid request body: {str(e)}")
+        
+        # Normalize replay item descriptions BEFORE validation
+        if body and 'replay' in body and body['replay']:
+            body['replay'] = normalize_replay_item(body['replay'])
+        
+        # Now validate with normalized data
+        try:
+            submit_request = ServerSubmitLevelResultRequest.model_validate(body)
+        except Exception as e:
+            import traceback
+            print(f"Error validating request body: {e}")
+            print(traceback.format_exc())
+            raise HTTPException(400, f"Invalid request body: {str(e)}")
         
         handler = self.sonolus.get_handler(item_type, "result_submit")
         if handler is None:

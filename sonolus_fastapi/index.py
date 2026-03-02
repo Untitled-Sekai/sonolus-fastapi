@@ -10,7 +10,8 @@ from sonolus_models import (
     EngineItem,
     LevelItem,
     PostItem,
-    UserItem
+    UserItem,
+    ReplayItem
 )
 from .backend import StorageBackend, StoreFactory
 from sonolus_models import ServerForm
@@ -23,6 +24,14 @@ from .utils.context import SonolusContext
 from .utils.query import Query
 from .utils.session import SessionStore, MemorySessionStore
 from .router.sonolus_api import SonolusApi
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .backend.memory import MemoryItemStore
+    from .backend.json import JsonItemStore
+    from .backend.database import DatabaseItemStore
+    from .backend.community_accessor import ItemCommentAccessor
+    from .backend.leaderboard_accessor import ItemLeaderboardAccessor
 
 class Sonolus:
     Kind = Literal["info", "list", "detail", "actions", "upload", "result_info", "result_submit", "result_upload"]
@@ -233,6 +242,37 @@ class Sonolus:
         
         if repository_path not in self._repository_paths:
             self._repository_paths.append(repository_path)
+    
+    def add(self, path: str | List[str]):
+        """
+        追加のリポジトリディレクトリを監視対象に追加します。
+        Add additional repository directories to watch.
+        
+        Args:
+            path: リポジトリディレクトリのパス、または複数のパスのリスト
+                  Repository directory path or list of paths
+        """
+        import os
+        
+        # pathが配列の場合は各パスに対して再帰的にaddを呼び出す
+        if isinstance(path, list):
+            for p in path:
+                self.add(p)
+            return
+        
+        # パスの存在確認
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Repository path not found: {path}")
+        
+        if not os.path.isdir(path):
+            raise NotADirectoryError(f"Path is not a directory: {path}")
+        
+        # 絶対パスに変換
+        abs_path = os.path.abspath(path)
+        
+        # 重複チェックして追加
+        if abs_path not in self._repository_paths:
+            self._repository_paths.append(abs_path)
             
     def run(self):
         import uvicorn
@@ -290,6 +330,39 @@ class SonolusSpa:
 # -------------------------
 
 class ItemStores:
+    """アイテムストアのコレクション"""
+    
+    # 型ヒント用の属性定義
+    post: "MemoryItemStore[PostItem] | JsonItemStore[PostItem] | DatabaseItemStore[PostItem]"
+    level: "MemoryItemStore[LevelItem] | JsonItemStore[LevelItem] | DatabaseItemStore[LevelItem]"
+    engine: "MemoryItemStore[EngineItem] | JsonItemStore[EngineItem] | DatabaseItemStore[EngineItem]"
+    skin: "MemoryItemStore[SkinItem] | JsonItemStore[SkinItem] | DatabaseItemStore[SkinItem]"
+    background: "MemoryItemStore[BackgroundItem] | JsonItemStore[BackgroundItem] | DatabaseItemStore[BackgroundItem]"
+    effect: "MemoryItemStore[EffectItem] | JsonItemStore[EffectItem] | DatabaseItemStore[EffectItem]"
+    particle: "MemoryItemStore[ParticleItem] | JsonItemStore[ParticleItem] | DatabaseItemStore[ParticleItem]"
+    replay: "MemoryItemStore[ReplayItem] | JsonItemStore[ReplayItem] | DatabaseItemStore[ReplayItem]"
+    user: "MemoryItemStore[UserItem] | JsonItemStore[UserItem] | DatabaseItemStore[UserItem]"
+    
+    # コメントアクセサ（オプショナル）
+    level_comments: Optional["ItemCommentAccessor"]
+    skin_comments: Optional["ItemCommentAccessor"]
+    background_comments: Optional["ItemCommentAccessor"]
+    effect_comments: Optional["ItemCommentAccessor"]
+    particle_comments: Optional["ItemCommentAccessor"]
+    engine_comments: Optional["ItemCommentAccessor"]
+    post_comments: Optional["ItemCommentAccessor"]
+    replay_comments: Optional["ItemCommentAccessor"]
+    
+    # リーダーボードアクセサ（オプショナル）
+    level_leaderboards: Optional["ItemLeaderboardAccessor"]
+    skin_leaderboards: Optional["ItemLeaderboardAccessor"]
+    background_leaderboards: Optional["ItemLeaderboardAccessor"]
+    effect_leaderboards: Optional["ItemLeaderboardAccessor"]
+    particle_leaderboards: Optional["ItemLeaderboardAccessor"]
+    engine_leaderboards: Optional["ItemLeaderboardAccessor"]
+    post_leaderboards: Optional["ItemLeaderboardAccessor"]
+    replay_leaderboards: Optional["ItemLeaderboardAccessor"]
+    
     def __init__(self, factory: StoreFactory, comment_store=None, record_store=None):
         self.post = factory.create(PostItem)
         self.level = factory.create(LevelItem)
@@ -298,6 +371,7 @@ class ItemStores:
         self.background = factory.create(BackgroundItem)
         self.effect = factory.create(EffectItem)
         self.particle = factory.create(ParticleItem)
+        self.replay = factory.create(ReplayItem)
         self.user = factory.create(UserItem)
         
         # コメントアクセサ
