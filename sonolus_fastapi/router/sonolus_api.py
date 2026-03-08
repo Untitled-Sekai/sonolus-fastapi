@@ -1,12 +1,25 @@
 from fastapi import APIRouter, Request, HTTPException, FastAPI
 from typing import TYPE_CHECKING
+from sonolus_models import SonolusSignaturePublicKey
 from sonolus_models.items import ItemType
 from typing import Literal
+import json
+import base64
+import time as time_module
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.backends import default_backend
 
 if TYPE_CHECKING:
     from sonolus_fastapi.index import Sonolus
 
 class SonolusApi:
+    # Sonolus公開鍵（JWK形式）
+    SONOLUS_PUBLIC_KEY = SonolusSignaturePublicKey(
+        x="d2B14ZAn-zDsqY42rHofst8rw3XB90-a5lT80NFdXo0",
+        y="Hxzi9DHrlJ4CVSJVRnydxFWBZAgkFxZXbyxPSa8SJQw"
+    )
+    
     def __init__(self, sonolus: "Sonolus"):
         self.sonolus = sonolus
         self.router = APIRouter(prefix="/sonolus")
@@ -69,6 +82,43 @@ class SonolusApi:
     # utility methods
     # -------------------------
 
+    def _verify_sonolus_signature(self, message: bytes, signature_b64: str) -> bool:
+        """Sonolus-Signatureを検証する
+        
+        Args:
+            message: 検証するメッセージ（署名対象のデータ）
+            signature_b64: Base64エンコードされた署名
+            
+        Returns:
+            署名が有効な場合True、無効な場合False
+        """
+        try:
+            # Base64デコードされた署名を取得
+            signature = base64.b64decode(signature_b64)
+            
+            # JWKから公開鍵を復元
+            # x, y座標をBase64URLデコード
+            x_bytes = base64.urlsafe_b64decode(self.SONOLUS_PUBLIC_KEY.x + '==')
+            y_bytes = base64.urlsafe_b64decode(self.SONOLUS_PUBLIC_KEY.y + '==')
+            
+            # x, yから整数を作成
+            x = int.from_bytes(x_bytes, byteorder='big')
+            y = int.from_bytes(y_bytes, byteorder='big')
+            
+            # EC公開鍵を作成
+            public_numbers = ec.EllipticCurvePublicNumbers(x, y, ec.SECP256R1())
+            public_key = public_numbers.public_key(default_backend())
+            
+            # 署名を検証
+            public_key.verify(
+                signature,
+                message,
+                ec.ECDSA(hashes.SHA256())
+            )
+            return True
+        except Exception as e:
+            print(f"Signature verification failed: {e}")
+            return False
     
     async def _parse_request_body(self, request: Request, model_class=None):
         """リクエストボディを解析してモデルクラスのインスタンスを返す"""
@@ -91,7 +141,35 @@ class SonolusApi:
 
     async def _authenticate(self, request: Request):
         from sonolus_models import ServerAuthenticateRequest
-        auth_request = await self._parse_request_body(request, ServerAuthenticateRequest)
+        
+        # Sonolus-Signatureヘッダーを取得
+        signature = request.headers.get("Sonolus-Signature")
+        if not signature:
+            raise HTTPException(401, "Sonolus-Signature header is required")
+        
+        # リクエストボディを取得（JSON文字列として）
+        body_bytes = await request.body()
+        
+        # 署名を検証
+        if not self._verify_sonolus_signature(body_bytes, signature):
+            raise HTTPException(401, "Invalid signature")
+        
+        # リクエストボディをパース
+        try:
+            body = json.loads(body_bytes)
+            auth_request = ServerAuthenticateRequest.model_validate(body)
+        except Exception as e:
+            raise HTTPException(400, f"Invalid request body: {str(e)}")
+        
+        # typeを検証
+        if auth_request.type != "authenticateServer":
+            raise HTTPException(401, f"Invalid type: expected 'authenticateServer', got '{auth_request.type}'")
+        
+        # timeを検証（5分以内か）
+        current_time = int(time_module.time() * 1000)  # ミリ秒
+        time_diff = abs(current_time - auth_request.time)
+        if time_diff > 5 * 60 * 1000:  # 5分
+            raise HTTPException(401, f"Request time is too old or too far in the future")
         
         ctx = self.sonolus.build_context(request, auth_request)
         
