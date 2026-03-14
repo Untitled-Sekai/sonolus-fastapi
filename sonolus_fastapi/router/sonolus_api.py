@@ -20,30 +20,22 @@ class SonolusApi:
         y="Hxzi9DHrlJ4CVSJVRnydxFWBZAgkFxZXbyxPSa8SJQw"
     )
     
-    def __init__(self, sonolus: "Sonolus"):
+    def __init__(self, sonolus: "Sonolus", router: APIRouter | None = None):
         self.sonolus = sonolus
-        self.router = APIRouter(prefix="/sonolus")
+        self.router = router or APIRouter(prefix="/sonolus")
         self._register_routes()
 
-    def register(self, app: FastAPI):
-        app.include_router(self.router)
+    def register(self, target: FastAPI | APIRouter):
+        target.include_router(self.router)
 
     # -------------------------
     # route definitions
     # -------------------------
 
     def _register_routes(self):
-
-
         # -------------------------
         # Sonolus Basic API
         # -------------------------
-
-
-        # -------------------------
-        # Sonolus Basic API
-        # -------------------------
-
 
         self.router.post('/authenticate')(self._authenticate)
         self.router.get('/info')(self._server_info)

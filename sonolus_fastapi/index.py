@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any, Literal
@@ -38,13 +38,16 @@ class Sonolus:
     
     def __init__(
         self,
-        address: str,
-        port: int,
+        address: str = "http://localhost",
+        port: int = 8000,
         dev: bool = False,
         session_store: Optional[SessionStore] = None,
         version: str = "1.1.0",
         enable_cors: bool = True,
         backend: StorageBackend = StorageBackend.MEMORY,
+        app: Optional[FastAPI] = None,
+        router: Optional[APIRouter] = None,
+        target: Optional[FastAPI | APIRouter] = None,
         **backend_options,
     ):
         """
@@ -52,6 +55,9 @@ class Sonolus:
         Args:
             address: サーバーアドレス Server address
             port: サーバーポート Server port
+            app: FastAPIインスタンス（指定時はこのappにもSonolusルートを登録）
+            router: APIRouterインスタンス（指定時はこのrouterにSonolusルートを登録）
+            target: FastAPIまたはAPIRouter（router/appより優先）
             level_search: レベル検索フォーム Level search form
             skin_search: スキン検索フォーム Skin search form
             background_search: 背景検索フォーム Background search form
@@ -62,11 +68,19 @@ class Sonolus:
         """
         factory = StoreFactory(backend, **backend_options)
         
-        self.app = FastAPI()
+        if target is not None and router is not None and target is not router:
+            raise ValueError("'target' and 'router' cannot be used together unless they point to the same object")
+
+        self.app = app or FastAPI()
+        self.router = APIRouter(prefix="/sonolus")
         self.port = port
         self.address = address
         self.dev = dev
         self.version = version
+        self._enable_cors = enable_cors
+        self._attached_targets: set[int] = set()
+        self._version_header_middleware_apps: set[int] = set()
+        self._cors_apps: set[int] = set()
         
         # コメントストアを作成
         from .backend import CommunityCommentStore, LeaderboardRecordStore
@@ -98,26 +112,61 @@ class Sonolus:
         # リポジトリファイルを提供するカスタムエンドポイントを先に追加
         self._setup_repository_handler()
         
-        self.api = SonolusApi(self)
-        self.api.register(self.app)
+        self.api = SonolusApi(self, router=self.router)
 
-        @self.app.middleware('http')
+        # デフォルトでは内部FastAPIに登録（従来互換）
+        self.attach(self.app, enable_cors=enable_cors)
+
+        # 外部のFastAPI/APIRouterにも必要に応じて登録
+        effective_target = target or router
+        if effective_target is not None and effective_target is not self.app:
+            self.attach(
+                effective_target,
+                enable_cors=enable_cors if isinstance(effective_target, FastAPI) else None,
+            )
+
+    def attach(self, target: FastAPI | APIRouter, enable_cors: Optional[bool] = None):
+        """SonolusルートをFastAPIまたはAPIRouterに登録します。"""
+        target_id = id(target)
+        if target_id not in self._attached_targets:
+            self.api.register(target)
+            self._attached_targets.add(target_id)
+
+        if isinstance(target, FastAPI):
+            self._setup_version_middleware(target)
+            cors_enabled = self._enable_cors if enable_cors is None else enable_cors
+            if cors_enabled:
+                self._setup_cors(target)
+
+    def _setup_version_middleware(self, app: FastAPI):
+        app_id = id(app)
+        if app_id in self._version_header_middleware_apps:
+            return
+
+        @app.middleware('http')
         async def sonolus_version_middleware(request: Request, call_next):
             response = await call_next(request)
-            
+
             if request.url.path.startswith('/sonolus'):
                 response.headers['Sonolus-Version'] = self.version
-            
+
             return response
 
-        if enable_cors:
-            self.app.add_middleware(
-                CORSMiddleware,
-                allow_origins=["*"],
-                allow_credentials=True,
-                allow_methods=["*"],
-                allow_headers=["*"],
-            )
+        self._version_header_middleware_apps.add(app_id)
+
+    def _setup_cors(self, app: FastAPI):
+        app_id = id(app)
+        if app_id in self._cors_apps:
+            return
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        self._cors_apps.add(app_id)
             
     def build_context(self, request: Request, request_body: Any = None) -> SonolusContext:
         # 設定されたオプションの値をクエリパラメータから取得し、型変換を行う
@@ -207,7 +256,7 @@ class Sonolus:
         from fastapi.responses import FileResponse
         import os
         
-        @self.app.get("/sonolus/repository/{file_hash}")
+        @self.router.get("/repository/{file_hash}")
         async def get_repository_file(file_hash: str):
             """リポジトリファイルを検索して提供"""
             # 各リポジトリパスでファイルを検索
