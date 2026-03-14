@@ -1,17 +1,39 @@
 """
 sonolus-fastapi 総合サンプル
 
-このファイルでは次の2パターンを同時に説明します。
+このファイルは、`sonolus-fastapi` の基本的な使い方を一通りまとめたサンプルです。
 
-1) FastAPI直利用（従来どおり）
-2) APIRouter組み込み利用（今回の仕様変更）
+主に次の内容を含みます。
 
-実行モードは環境変数 `SONOLUS_EXAMPLE_MODE` で切り替え:
+1. `FastAPI` 直利用モード
+	- `Sonolus` インスタンスが内部で `FastAPI` を持つ従来の使い方
+	- `sonolus.run()` でそのまま起動できます
+
+2. `APIRouter` 組み込みモード
+	- 既存の `FastAPI` アプリへ `Sonolus` を router として組み込む使い方
+	- 今回追加した仕様です
+	- このモードでは `Sonolus` 側に `port` や `address` を必須で持たせる必要はありません
+
+3. ハンドラー登録の流れ
+	- `server_info`
+	- `authenticate`
+	- `post.info/list/detail`
+	- `background.info/list`
+
+4. `source` の扱い
+	- 各アイテムの `source` は保存時にはDB/JSON/メモリへ保持しません
+	- 返却時にだけ `Sonolus.address` または現在のリクエストURLで動的に上書きされます
+	- そのため、開発環境/本番環境/リバースプロキシ配下で柔軟に切り替えできます
+
+実行モードは環境変数 `SONOLUS_EXAMPLE_MODE` で切り替えます。
 
 - standalone (デフォルト): `python example.py`
 - router: `SONOLUS_EXAMPLE_MODE=router uvicorn example:app --reload`
 
-router モードでは Sonolus 側に port/address の設定は不要です。
+ルーティング例:
+
+- standalone: `/sonolus/...`
+- router: `/api/sonolus/...`
 """
 
 from __future__ import annotations
@@ -49,7 +71,12 @@ from sonolus_models import (
 
 
 def create_configuration_options() -> list:
-	"""設定オプション定義（ctx.options で取得される）。"""
+	"""
+	設定オプション定義。
+
+	ここで登録した option は、各ハンドラーの `ctx.options` から参照できます。
+	たとえば `keywords` は `post.list` 内で簡易フィルタに使っています。
+	"""
 	return [
 		ServerToggleOption(
 			query="showFeatured",
@@ -72,7 +99,12 @@ def create_configuration_options() -> list:
 
 
 def seed_data(sonolus: Sonolus):
-	"""メモリストアへ最小限のサンプルデータを投入。"""
+	"""
+	メモリストアへ最小限のサンプルデータを投入。
+
+	このサンプルでは `PostItem` だけを手動で追加しています。
+	`source` はここで指定しなくても、レスポンス返却時に自動で補われます。
+	"""
 	now = int(time.time() * 1000)
 	post_item = PostItem(
 		name="example_post",
@@ -88,10 +120,16 @@ def seed_data(sonolus: Sonolus):
 
 
 def register_handlers(sonolus: Sonolus, config_options: list):
-	"""サーバー/アイテムハンドラーを登録。"""
+	"""
+	サーバー/アイテムハンドラーを登録。
+
+	この関数は `standalone` / `router` の両モードで共通利用しています。
+	つまり、利用モードが変わってもハンドラーの書き方自体は同じです。
+	"""
 
 	@sonolus.server.server_info(SonolusServerInfo)
 	async def get_server_info(ctx: SonolusContext):
+		# Sonolus アプリ起動時に最初に参照されることが多い基本情報。
 		return SonolusServerInfo(
 			title="Example Sonolus Server",
 			description="FastAPI and APIRouter compatible example",
@@ -107,6 +145,7 @@ def register_handlers(sonolus: Sonolus, config_options: list):
 
 	@sonolus.server.authenticate(ServerAuthenticateResponse)
 	async def authenticate(ctx: SonolusContext[ServerAuthenticateRequest]):
+		# 認証の最小例。ここではランダムなセッションIDを発行しています。
 		session = generate_random_string(16)
 		expiration = int(time.time() * 1000) + 3600 * 1000
 		sonolus.session_store.set(session, ctx.request)
@@ -114,10 +153,12 @@ def register_handlers(sonolus: Sonolus, config_options: list):
 
 	@sonolus.post.info(ServerItemInfo)
 	async def get_post_info(ctx: SonolusContext):
+		# Post 一覧のメタ情報。
 		return ServerItemInfo(creates=[], searches=[], sections=[], banner=None)
 
 	@sonolus.post.list(ServerItemList)
 	async def get_post_list(ctx: SonolusContext, query: Any):
+		# 設定オプションから値を受け取り、簡易フィルタしています。
 		keywords = (ctx.options or {}).get("keywords", "")
 		items = sonolus.items.post.list()
 		if keywords:
@@ -126,6 +167,7 @@ def register_handlers(sonolus: Sonolus, config_options: list):
 
 	@sonolus.post.detail(ServerItemDetails)
 	async def get_post_detail(ctx: SonolusContext, name: str):
+		# 詳細レスポンスでも item.source は返却時に自動上書きされます。
 		post = sonolus.items.post.get(name)
 		if post is None:
 			raise HTTPException(404, "Post item not found")
@@ -141,6 +183,7 @@ def register_handlers(sonolus: Sonolus, config_options: list):
 
 	@sonolus.background.info(ServerItemInfo)
 	async def get_background_info(ctx: SonolusContext):
+		# pack から読み込んだ background をセクション表示する例。
 		section = BackgroundSection(
 			title=SonolusText.BACKGROUND,
 			icon=SonolusIcon.Heart,
@@ -160,7 +203,10 @@ def create_standalone_sonolus() -> Sonolus:
 	- Sonolus が内部で FastAPI を持つ
 	- `sonolus.run()` で起動可能
 	- 従来互換
+	- `address` を固定しているので、返却される `source` もこの値になります
 	"""
+	# `address` を明示すると、全レスポンスの `source` はこのURL基準になります。
+	# 本番で固定URLが決まっている場合はこちらが分かりやすいです。
 	sonolus = Sonolus(
 		address="https://example.com",
 		port=8000,
@@ -171,7 +217,9 @@ def create_standalone_sonolus() -> Sonolus:
 	)
 
 	config_options = create_configuration_options()
+	# Configuration option を登録すると `ctx.options` から参照できます。
 	sonolus.register_configuration_options(config_options)
+	# Sonolus pack を読み込みます。repository 配信も自動で有効になります。
 	sonolus.load(freepackpath)
 	seed_data(sonolus)
 	register_handlers(sonolus, config_options)
@@ -188,11 +236,15 @@ def create_router_integration() -> tuple[FastAPI, Sonolus, APIRouter]:
 	2) APIRouter組み込みモード（今回の仕様）
 
 	- Sonolus を既存 FastAPI アプリへ router として統合
-	- Sonolus 側の port/address 設定は不要（必要ならデフォルトをそのまま使用）
+	- Sonolus 側の port/address 設定は不要
+	- `address=None` のままなら、返却時の `source` は現在のリクエストURLから自動解決されます
+	- たとえば `/api` 配下へ組み込んでもハンドラーの書き方は変わりません
 	"""
 	app = FastAPI(title="Integrated App")
 	api_router = APIRouter(prefix="/api")
 
+	# `router=api_router` を渡すと Sonolus ルートがこの router に登録されます。
+	# このとき Sonolus 内部の app とは別に、既存 FastAPI アプリへ自然に統合できます。
 	sonolus = Sonolus(
 		router=api_router,
 		dev=True,
@@ -210,6 +262,8 @@ def create_router_integration() -> tuple[FastAPI, Sonolus, APIRouter]:
 	async def health():
 		return {"ok": True, "mode": "router"}
 
+	# ここで既存アプリへ router を組み込みます。
+	# 実際の Sonolus API は `/api/sonolus/...` に生えます。
 	app.include_router(api_router)
 	return app, sonolus, api_router
 
@@ -217,8 +271,12 @@ def create_router_integration() -> tuple[FastAPI, Sonolus, APIRouter]:
 MODE = os.getenv("SONOLUS_EXAMPLE_MODE", "standalone").strip().lower()
 
 if MODE == "router":
+	# router モード:
+	#   FastAPI アプリへ Sonolus router を統合した `app` を公開します。
 	app, sonolus, api_router = create_router_integration()
 else:
+	# standalone モード:
+	#   Sonolus が内部で持つ FastAPI アプリをそのまま使います。
 	sonolus = create_standalone_sonolus()
 	app = sonolus.app
 
@@ -229,7 +287,9 @@ if __name__ == "__main__":
 
 		print("SONOLUS_EXAMPLE_MODE=router")
 		print("Run: uvicorn example:app --reload")
+		print("Sonolus endpoints: /api/sonolus/...")
 		uvicorn.run(app, host="0.0.0.0", port=8000)
 	else:
 		print("SONOLUS_EXAMPLE_MODE=standalone")
+		print("Sonolus endpoints: /sonolus/...")
 		sonolus.run()

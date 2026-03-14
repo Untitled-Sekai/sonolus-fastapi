@@ -124,6 +124,12 @@ class SonolusApi:
             print(f"Error parsing request body: {e}")
             print(traceback.format_exc())
             raise HTTPException(400, f"Invalid request body: {str(e)}")
+
+    def _build_response(self, handler, result, request: Request):
+        result = self.sonolus.apply_response_source(result, request)
+        validated = handler.response_model.model_validate(result)
+        validated = self.sonolus.apply_response_source(validated, request)
+        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
     
 
     # -------------------------
@@ -170,8 +176,7 @@ class SonolusApi:
             raise HTTPException(404, "authenticate handler not implemented")
         
         result = await handler.call(ctx)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
     
     async def _server_info(self, request: Request):
@@ -182,8 +187,7 @@ class SonolusApi:
             raise HTTPException(404, "server info handler not implemented")
         
         result = await handler.call(ctx)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _info(self, item_type: ItemType, request: Request):
@@ -194,8 +198,7 @@ class SonolusApi:
             raise HTTPException(404, "info handler not implemented")
         
         result = await handler.call(ctx)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _list(self, item_type: ItemType, request: Request):
@@ -207,8 +210,7 @@ class SonolusApi:
             raise HTTPException(404, "list handler not implemented")
         
         result = await handler.call(ctx, query)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _detail(self, item_type: ItemType, name: str, request: Request):
@@ -219,8 +221,7 @@ class SonolusApi:
             raise HTTPException(404, "detail handler not implemented")
 
         result = await handler.call(ctx, name)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _actions(self, item_type: ItemType, name: str, request: Request):
@@ -232,8 +233,7 @@ class SonolusApi:
             raise HTTPException(404, "actions handler not implemented")
 
         result = await handler.call(ctx, name, action_request)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
     async def _upload(self, item_type: ItemType, name: str, request: Request):
         from fastapi import File, UploadFile, Form
@@ -253,8 +253,7 @@ class SonolusApi:
             raise HTTPException(404, "upload handler not implemented")
         
         result = await handler.call(ctx, name, upload_key, files)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
     async def _result_info(self, item_type: ItemType, request: Request):
         # result info is only available for levels
@@ -268,8 +267,7 @@ class SonolusApi:
             raise HTTPException(404, "result info handler not implemented")
         
         result = await handler.call(ctx)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
     async def _result_submit(self, item_type: ItemType, request: Request):
         # result submit is only available for levels
@@ -308,8 +306,7 @@ class SonolusApi:
             raise HTTPException(404, "result submit handler not implemented")
         
         result = await handler.call(ctx, submit_request)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
     async def _result_upload(self, item_type: ItemType, request: Request):
         # result upload is only available for levels
@@ -333,8 +330,7 @@ class SonolusApi:
             raise HTTPException(404, "result upload handler not implemented")
         
         result = await handler.call(ctx, upload_key, files)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
 
     async def _community_info(self, item_type: ItemType, name: str, request: Request):
         ctx = self.sonolus.build_context(request)
@@ -344,8 +340,7 @@ class SonolusApi:
             raise HTTPException(404, "community info handler not implemented")
 
         result = await handler.call(ctx, name)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _community_comments(self, item_type: ItemType, name: str, request: Request):
@@ -357,8 +352,7 @@ class SonolusApi:
             raise HTTPException(404, "community comments handler not implemented")
 
         result = await handler.call(ctx, name, query)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _community_actions(self, item_type: ItemType, name: str, request: Request):
@@ -370,8 +364,7 @@ class SonolusApi:
             raise HTTPException(404, "community actions handler not implemented")
 
         result = await handler.call(ctx, name, action_request)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _community_upload(self, item_type: ItemType, name: str, request: Request):
@@ -392,8 +385,7 @@ class SonolusApi:
             raise HTTPException(404, "community upload handler not implemented")
         
         result = await handler.call(ctx, name, upload_key, files)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _community_comment_actions(self, item_type: ItemType, name: str, comment_name: str, request: Request):
@@ -405,8 +397,7 @@ class SonolusApi:
             raise HTTPException(404, "community comment actions handler not implemented")
 
         result = await handler.call(ctx, name, comment_name, action_request)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
     
 
     async def _community_comment_upload(self, item_type: ItemType, name: str, comment_name: str, request: Request):
@@ -427,8 +418,7 @@ class SonolusApi:
             raise HTTPException(404, "community comment upload handler not implemented")
         
         result = await handler.call(ctx, name, comment_name, upload_key, files)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
 
     async def _leaderboard_detail(self, item_type: ItemType, name: str, leaderboard_name: str, request: Request):
         ctx = self.sonolus.build_context(request)
@@ -438,8 +428,7 @@ class SonolusApi:
             raise HTTPException(404, "leaderboard detail handler not implemented")
 
         result = await handler.call(ctx, name, leaderboard_name)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
 
     async def _leaderboard_records(self, item_type: ItemType, name: str, leaderboard_name: str, request: Request):
         ctx = self.sonolus.build_context(request)
@@ -450,8 +439,7 @@ class SonolusApi:
             raise HTTPException(404, "leaderboard records handler not implemented")
 
         result = await handler.call(ctx, name, leaderboard_name, query)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)
 
     async def _leaderboard_record_detail(self, item_type: ItemType, name: str, leaderboard_name: str, record_name: str, request: Request):
         ctx = self.sonolus.build_context(request)
@@ -461,5 +449,4 @@ class SonolusApi:
             raise HTTPException(404, "leaderboard record detail handler not implemented")
 
         result = await handler.call(ctx, name, leaderboard_name, record_name)
-        validated = handler.response_model.model_validate(result)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._build_response(handler, result, request)

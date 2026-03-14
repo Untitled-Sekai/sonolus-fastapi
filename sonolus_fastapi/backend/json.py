@@ -1,6 +1,7 @@
 import json
 import os
 from typing import TypeVar, Generic, Dict, List, Optional
+from sonolus_fastapi.utils.source import strip_source_fields
 
 T = TypeVar("T")
 
@@ -42,7 +43,8 @@ class JsonItemStore(Generic[T]):
         return items[offset:offset + limit]
         
     def add(self, item: T):
-        self._data[item.name] = item.model_dump()
+        item = strip_source_fields(item)
+        self._data[item.name] = item.model_dump(mode="python")
         self._save()
         
     def delete(self, name: str):
@@ -53,7 +55,8 @@ class JsonItemStore(Generic[T]):
             pass
     
     def update(self, item: T):
-        self._data[item.name] = item.model_dump()
+        item = strip_source_fields(item)
+        self._data[item.name] = item.model_dump(mode="python")
         self._save()
     
     def map(self) -> Dict[str, T]:

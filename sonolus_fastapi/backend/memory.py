@@ -1,4 +1,5 @@
 from typing import Generic, TypeVar, Dict, List, Optional
+from sonolus_fastapi.utils.source import strip_source_fields
 
 T = TypeVar("T")
 
@@ -18,12 +19,14 @@ class MemoryItemStore(Generic[T]):
         return items[offset:offset + limit]
     
     def add(self, item: T):
+        item = strip_source_fields(item)
         self._data[item.name] = item
     
     def delete(self, name: str):
         self._data.pop(name, None)
     
     def update(self, item: T):
+        item = strip_source_fields(item)
         self._data[item.name] = item
     
     def map(self) -> Dict[str, T]:

@@ -1,6 +1,7 @@
 import json
 from typing import TypeVar, Generic, List, Optional
 from sqlalchemy import create_engine, text
+from sonolus_fastapi.utils.source import strip_source_fields
 
 T = TypeVar("T")
 
@@ -52,7 +53,8 @@ class DatabaseItemStore(Generic[T]):
         ]
         
     def add(self, item: T):
-        data = json.dumps(item.model_dump(), ensure_ascii=False)
+        item = strip_source_fields(item)
+        data = json.dumps(item.model_dump(mode="python"), ensure_ascii=False)
 
         with self.engine.begin() as conn:
             conn.execute(
@@ -72,7 +74,8 @@ class DatabaseItemStore(Generic[T]):
             )
             
     def update(self, item: T):
-        data = json.dumps(item.model_dump(), ensure_ascii=False)
+        item = strip_source_fields(item)
+        data = json.dumps(item.model_dump(mode="python"), ensure_ascii=False)
         
         with self.engine.begin() as conn:
             conn.execute(

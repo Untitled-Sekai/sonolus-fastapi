@@ -23,6 +23,7 @@ from .utils.pack import set_pack_memory
 from .utils.context import SonolusContext
 from .utils.query import Query
 from .utils.session import SessionStore, MemorySessionStore
+from .utils.source import override_source_fields
 from .router.sonolus_api import SonolusApi
 from typing import TYPE_CHECKING
 
@@ -38,7 +39,7 @@ class Sonolus:
     
     def __init__(
         self,
-        address: str = "http://localhost",
+        address: str | None = None,
         port: int = 8000,
         dev: bool = False,
         session_store: Optional[SessionStore] = None,
@@ -167,6 +168,20 @@ class Sonolus:
             allow_headers=["*"],
         )
         self._cors_apps.add(app_id)
+
+    def resolve_address(self, request: Request | None = None) -> str | None:
+        """レスポンスへ埋め込む `source` 用のアドレスを解決します。"""
+        if self.address:
+            return self.address.rstrip("/")
+
+        if request is not None:
+            return str(request.base_url).rstrip("/")
+
+        return None
+
+    def apply_response_source(self, value: Any, request: Request | None = None) -> Any:
+        """レスポンス内の `source` を現在の address で上書きします。"""
+        return override_source_fields(value, self.resolve_address(request))
             
     def build_context(self, request: Request, request_body: Any = None) -> SonolusContext:
         # 設定されたオプションの値をクエリパラメータから取得し、型変換を行う
