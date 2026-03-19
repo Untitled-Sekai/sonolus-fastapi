@@ -30,17 +30,19 @@ class ServerInfoHandlerDescriptor(Generic[T]):
         return await self.fn(ctx)
 
 class InfoHandlerDescriptor(Generic[T]):
-    def __init__(self, fn: InfoFn[T], response_model: type[T]):
+    def __init__(self, fn: InfoFn[T], response_model: type[T], info_type: str | None = None):
         self.fn = fn
         self.response_model = response_model
+        self.info_type = info_type
 
     async def call(self, ctx: Ctx) -> T:
         return await self.fn(ctx)
 
 class ListHandlerDescriptor(Generic[T]):
-    def __init__(self, fn: ListFn[T], response_model: type[T]):
+    def __init__(self, fn: ListFn[T], response_model: type[T], list_type: str | None = None):
         self.fn = fn
         self.response_model = response_model
+        self.list_type = list_type
 
     async def call(self, ctx: Ctx, query: Query) -> T:
         return await self.fn(ctx, query)

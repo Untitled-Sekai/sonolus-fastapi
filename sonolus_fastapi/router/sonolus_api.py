@@ -8,6 +8,7 @@ import base64
 import time as time_module
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 from cryptography.hazmat.backends import default_backend
 
 if TYPE_CHECKING:
@@ -87,11 +88,20 @@ class SonolusApi:
         try:
             # Base64デコードされた署名を取得
             signature = base64.b64decode(signature_b64)
+
+            # Sonolusクライアントからは raw 64-byte (r||s) 形式で来る場合がある。
+            # cryptography の ECDSA verify は DER 形式を期待するため変換する。
+            if len(signature) == 64:
+                r = int.from_bytes(signature[:32], byteorder='big')
+                s = int.from_bytes(signature[32:], byteorder='big')
+                signature = encode_dss_signature(r, s)
             
             # JWKから公開鍵を復元
             # x, y座標をBase64URLデコード
-            x_bytes = base64.urlsafe_b64decode(self.SONOLUS_PUBLIC_KEY.x + '==')
-            y_bytes = base64.urlsafe_b64decode(self.SONOLUS_PUBLIC_KEY.y + '==')
+            x_padding = '=' * (-len(self.SONOLUS_PUBLIC_KEY.x) % 4)
+            y_padding = '=' * (-len(self.SONOLUS_PUBLIC_KEY.y) % 4)
+            x_bytes = base64.urlsafe_b64decode(self.SONOLUS_PUBLIC_KEY.x + x_padding)
+            y_bytes = base64.urlsafe_b64decode(self.SONOLUS_PUBLIC_KEY.y + y_padding)
             
             # x, yから整数を作成
             x = int.from_bytes(x_bytes, byteorder='big')
@@ -193,7 +203,10 @@ class SonolusApi:
     async def _info(self, item_type: ItemType, request: Request):
         ctx = self.sonolus.build_context(request)
         
-        handler = self.sonolus.get_handler(item_type, "info")
+        # クエリパラメータから type を取得（info_type用）
+        info_type = request.query_params.get("type")
+        
+        handler = self.sonolus.get_handler(item_type, "info", filter_key=info_type)
         if handler is None:
             raise HTTPException(404, "info handler not implemented")
         
@@ -204,8 +217,11 @@ class SonolusApi:
     async def _list(self, item_type: ItemType, request: Request):
         ctx = self.sonolus.build_context(request)
         query = self.sonolus.build_query(item_type, request)
+        
+        # クエリパラメータから type を取得（list_type用）
+        list_type = request.query_params.get("type")
 
-        handler = self.sonolus.get_handler(item_type, "list")
+        handler = self.sonolus.get_handler(item_type, "list", filter_key=list_type)
         if handler is None:
             raise HTTPException(404, "list handler not implemented")
         
@@ -215,8 +231,11 @@ class SonolusApi:
 
     async def _detail(self, item_type: ItemType, name: str, request: Request):
         ctx = self.sonolus.build_context(request)
+        
+        # クエリパラメータから type を取得（detail_type用）
+        detail_type = request.query_params.get("type")
 
-        handler = self.sonolus.get_handler(item_type, "detail")
+        handler = self.sonolus.get_handler(item_type, "detail", filter_key=detail_type)
         if handler is None:
             raise HTTPException(404, "detail handler not implemented")
 
@@ -227,8 +246,11 @@ class SonolusApi:
     async def _actions(self, item_type: ItemType, name: str, request: Request):
         ctx = self.sonolus.build_context(request)
         action_request = await self._parse_request_body(request)
+        
+        # クエリパラメータから type を取得（action_type用）
+        action_type = request.query_params.get("type")
 
-        handler = self.sonolus.get_handler(item_type, "actions")
+        handler = self.sonolus.get_handler(item_type, "actions", filter_key=action_type)
         if handler is None:
             raise HTTPException(404, "actions handler not implemented")
 
@@ -246,9 +268,12 @@ class SonolusApi:
         form = await request.form()
         files = form.getlist("files")
         
+        # クエリパラメータから type を取得（upload_type用）
+        upload_type = request.query_params.get("type")
+        
         ctx = self.sonolus.build_context(request)
         
-        handler = self.sonolus.get_handler(item_type, "upload")
+        handler = self.sonolus.get_handler(item_type, "upload", filter_key=upload_type)
         if handler is None:
             raise HTTPException(404, "upload handler not implemented")
         
@@ -262,7 +287,10 @@ class SonolusApi:
         
         ctx = self.sonolus.build_context(request)
         
-        handler = self.sonolus.get_handler(item_type, "result_info")
+        # クエリパラメータから type を取得（result_type用）
+        result_type = request.query_params.get("type")
+        
+        handler = self.sonolus.get_handler(item_type, "result_info", filter_key=result_type)
         if handler is None:
             raise HTTPException(404, "result info handler not implemented")
         
@@ -301,7 +329,10 @@ class SonolusApi:
             print(traceback.format_exc())
             raise HTTPException(400, f"Invalid request body: {str(e)}")
         
-        handler = self.sonolus.get_handler(item_type, "result_submit")
+        # クエリパラメータから type を取得（result_type用）
+        result_type = request.query_params.get("type")
+        
+        handler = self.sonolus.get_handler(item_type, "result_submit", filter_key=result_type)
         if handler is None:
             raise HTTPException(404, "result submit handler not implemented")
         
@@ -323,9 +354,12 @@ class SonolusApi:
         form = await request.form()
         files = form.getlist("files")
         
+        # クエリパラメータから type を取得（result_type用）
+        result_type = request.query_params.get("type")
+        
         ctx = self.sonolus.build_context(request)
         
-        handler = self.sonolus.get_handler(item_type, "result_upload")
+        handler = self.sonolus.get_handler(item_type, "result_upload", filter_key=result_type)
         if handler is None:
             raise HTTPException(404, "result upload handler not implemented")
         

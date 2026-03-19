@@ -231,8 +231,32 @@ class Sonolus:
 
         return model.model_validate(raw)
 
-    def _register_handler(self, item_type: ItemType, kind: Kind, descriptor: object):
-        self._handlers.setdefault(item_type, {})[kind] = descriptor
+    def _register_handler(self, item_type: ItemType, kind: Kind, descriptor: object, filter_key: str | None = None):
+        """ハンドラーを登録する
+        
+        Args:
+            item_type: アイテムタイプ
+            kind: ハンドラーの種類（info, list等）
+            descriptor: ハンドラーディスクリプタ
+            filter_key: フィルターキー（info_type, list_typeなど）。指定なしの場合はNone
+        """
+        if item_type not in self._handlers:
+            self._handlers[item_type] = {}
+        
+        # filter_key が指定されている場合、内部では辞書構造にする
+        if filter_key is not None:
+            # 既に kind が登録されていない場合、辞書を作成
+            if kind not in self._handlers[item_type]:
+                self._handlers[item_type][kind] = {}
+            # filter_key に対応するハンドラーを設定
+            if not isinstance(self._handlers[item_type][kind], dict):
+                # 既存のハンドラーがある場合、None キーで保存
+                old_descriptor = self._handlers[item_type][kind]
+                self._handlers[item_type][kind] = {None: old_descriptor}
+            self._handlers[item_type][kind][filter_key] = descriptor
+        else:
+            # filter_key がない場合は通常通り
+            self._handlers[item_type][kind] = descriptor
         
     def _register_server_handler(self, kind: str, descriptor: object):
         self._server_handlers[kind] = descriptor
@@ -243,8 +267,34 @@ class Sonolus:
     def _register_leaderboard_handler(self, item_type: ItemType, kind: str, descriptor: object):
         self._handlers.setdefault(item_type, {}).setdefault("leaderboard", {})[kind] = descriptor
         
-    def get_handler(self, item_type: ItemType, kind: Kind):
-        return self._handlers.get(item_type, {}).get(kind)
+    def get_handler(self, item_type: ItemType, kind: Kind, filter_key: str | None = None):
+        """ハンドラーを取得する
+        
+        Args:
+            item_type: アイテムタイプ
+            kind: ハンドラーの種類（info, list等）
+            filter_key: フィルターキー（info_type, list_typeなど）
+            
+        Returns:
+            ハンドラーディスクリプタ、または存在しない場合はNone
+        """
+        handler = self._handlers.get(item_type, {}).get(kind)
+        
+        if handler is None:
+            return None
+        
+        # ハンドラーが辞書の場合、filter_key で検索
+        if isinstance(handler, dict):
+            if filter_key is not None and filter_key in handler:
+                return handler[filter_key]
+            # filter_key が指定されていない場合、デフォルト（None）を返す
+            elif filter_key is None and None in handler:
+                return handler[None]
+            else:
+                return None
+        
+        # ハンドラーが辞書でない場合は直接返す（backward compatibility）
+        return handler
         
     def get_server_handler(self, kind: str):
         return self._server_handlers.get(kind)
@@ -339,6 +389,11 @@ class Sonolus:
             self._repository_paths.append(abs_path)
             
     def run(self):
+        """
+        サーバーを起動します。本番環境では、gunicornやuvicornを直接実行することを推奨します。
+        
+        Start the server. In production environments, we recommend running gunicorn or uvicorn directly.
+        """
         import uvicorn
         print("----------------------------------------")
         print("This is recommended to be used in development only.")
