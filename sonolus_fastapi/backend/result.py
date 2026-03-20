@@ -10,3 +10,7 @@ class ListResult(Generic[T]):
     total_count: int
     limit: int
     offset: int
+    
+    def __class_getitem__(cls, item_type):
+        # ジェネリクスの型パラメータを正しく処理
+        return cls
