@@ -2,6 +2,7 @@ import json
 from typing import TypeVar, Generic, List, Optional
 from sqlalchemy import create_engine, text
 from sonolus_fastapi.utils.source import strip_source_fields
+from .result import ListResult
 
 T = TypeVar("T")
 
@@ -37,20 +38,35 @@ class DatabaseItemStore(Generic[T]):
             
             return self.item_cls.model_validate(json.loads(row[0]))
         
-    def list(self, limit: int = 20, offset: int = 0) -> List[T]:
+    def list(self, limit: int = 20, offset: int = 0) -> ListResult[T]:
         if limit > 20:
             limit = 20  # 最大20件に制限
         
         with self.engine.begin() as conn:
+            # totalcountを取得
+            count_result = conn.execute(
+                text("SELECT COUNT(*) FROM items WHERE item_type = :item_type"),
+                {"item_type": self.item_type}
+            ).fetchone()
+            total_count = count_result[0] if count_result else 0
+            
+            # データを取得
             rows = conn.execute(
                 text("SELECT data FROM items WHERE item_type = :item_type LIMIT :limit OFFSET :offset"),
                 {"item_type": self.item_type, "limit": limit, "offset": offset}
             ).fetchall()
 
-        return [
+        items = [
             self.item_cls.model_validate(json.loads(row[0]))
             for row in rows
         ]
+        
+        return ListResult(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
         
     def add(self, item: T):
         item = strip_source_fields(item)

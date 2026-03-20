@@ -2,6 +2,7 @@ import json
 from typing import List, Optional
 from sqlalchemy import create_engine, text
 from sonolus_models import ItemType, ServerItemLeaderboardRecord
+from .result import ListResult
 
 class DatabaseRecordStore:
     """SQLデータベースでleaderboard recordsを管理するストア"""
@@ -61,11 +62,28 @@ class DatabaseRecordStore:
             
             return ServerItemLeaderboardRecord.model_validate(json.loads(row[0]))
     
-    def list(self, limit: int = 10, offset: int = 0) -> List[ServerItemLeaderboardRecord]:
+    def list(self, limit: int = 10, offset: int = 0) -> ListResult[ServerItemLeaderboardRecord]:
         if limit > 20:
             limit = 20
         
         with self.engine.connect() as conn:
+            # totalcountを取得
+            count_result = conn.execute(
+                text("""
+                    SELECT COUNT(*) FROM leaderboard_records 
+                    WHERE parent_type = :parent_type 
+                    AND parent_name = :parent_name
+                    AND leaderboard_name = :leaderboard_name
+                """),
+                {
+                    "parent_type": self.item_type.value,
+                    "parent_name": self.item_name,
+                    "leaderboard_name": self.leaderboard_name
+                }
+            ).fetchone()
+            total_count = count_result[0] if count_result else 0
+            
+            # データを取得
             rows = conn.execute(
                 text("""
                     SELECT data FROM leaderboard_records 
@@ -84,10 +102,17 @@ class DatabaseRecordStore:
                 }
             ).fetchall()
         
-        return [
+        items = [
             ServerItemLeaderboardRecord.model_validate(json.loads(row[0]))
             for row in rows
         ]
+        
+        return ListResult(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
     
     def add(self, record: ServerItemLeaderboardRecord):
         data = json.dumps(record.model_dump(), ensure_ascii=False)

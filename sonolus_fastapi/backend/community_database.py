@@ -2,6 +2,7 @@ import json
 from typing import List, Optional
 from sqlalchemy import create_engine, text
 from sonolus_models import ItemType, ServerItemCommunityComment
+from .result import ListResult
 
 class DatabaseCommentStore:
     """SQLデータベースでコメントを管理するストア"""
@@ -57,11 +58,26 @@ class DatabaseCommentStore:
             
             return ServerItemCommunityComment.model_validate(json.loads(row[0]))
     
-    def list(self, limit: int = 10, offset: int = 0) -> List[ServerItemCommunityComment]:
+    def list(self, limit: int = 10, offset: int = 0) -> ListResult[ServerItemCommunityComment]:
         if limit > 20:
             limit = 20
         
         with self.engine.connect() as conn:
+            # totalcountを取得
+            count_result = conn.execute(
+                text("""
+                    SELECT COUNT(*) FROM comments 
+                    WHERE parent_type = :parent_type 
+                    AND parent_name = :parent_name
+                """),
+                {
+                    "parent_type": self.item_type.value,
+                    "parent_name": self.item_name
+                }
+            ).fetchone()
+            total_count = count_result[0] if count_result else 0
+            
+            # データを取得
             rows = conn.execute(
                 text("""
                     SELECT data FROM comments 
@@ -78,10 +94,17 @@ class DatabaseCommentStore:
                 }
             ).fetchall()
         
-        return [
+        items = [
             ServerItemCommunityComment.model_validate(json.loads(row[0]))
             for row in rows
         ]
+        
+        return ListResult(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
     
     def add(self, comment: ServerItemCommunityComment):
         data = json.dumps(comment.model_dump(), ensure_ascii=False)
