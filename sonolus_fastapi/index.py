@@ -45,6 +45,7 @@ class Sonolus:
         session_store: Optional[SessionStore] = None,
         version: str = "1.1.1",
         enable_cors: bool = True,
+        enable_itemstores: bool = True,
         backend: StorageBackend = StorageBackend.MEMORY,
         app: Optional[FastAPI] = None,
         router: Optional[APIRouter] = None,
@@ -66,9 +67,8 @@ class Sonolus:
             particle_search: パーティクル検索フォーム Particle search form
             engine_search: エンジン検索フォーム Engine search form
             enable_cors: CORSを有効にするかどうか Whether to enable CORS
+            enable_itemstores: アイテムストアを有効にするかどうか。Falseの場合、独自のOrmモデルを使用できます。Whether to enable item stores. If False, you can use a custom ORM model.
         """
-        factory = StoreFactory(backend, **backend_options)
-        
         if target is not None and router is not None and target is not router:
             raise ValueError("'target' and 'router' cannot be used together unless they point to the same object")
 
@@ -82,13 +82,19 @@ class Sonolus:
         self._attached_targets: set[int] = set()
         self._version_header_middleware_apps: set[int] = set()
         self._cors_apps: set[int] = set()
+        self._enable_itemstores = enable_itemstores
         
-        # コメントストアを作成
-        from .backend import CommunityCommentStore, LeaderboardRecordStore
-        self.community_comments = CommunityCommentStore(backend, **backend_options)
-        self.leaderboard_records = LeaderboardRecordStore(backend, **backend_options)
-        
-        self.items = ItemStores(factory, self.community_comments, self.leaderboard_records)
+        # アイテムストアの初期化
+        self._items: Optional[ItemStores] = None
+        if enable_itemstores:
+            factory = StoreFactory(backend, **backend_options)
+            
+            # コメントストアを作成
+            from .backend import CommunityCommentStore, LeaderboardRecordStore
+            self.community_comments = CommunityCommentStore(backend, **backend_options)
+            self.leaderboard_records = LeaderboardRecordStore(backend, **backend_options)
+            
+            self._items = ItemStores(factory, self.community_comments, self.leaderboard_records)
         
         self._handlers: dict[ItemType, dict[str, object]] = {}
         self._server_handlers: dict[str, object] = {}
@@ -126,6 +132,16 @@ class Sonolus:
                 enable_cors=enable_cors if isinstance(effective_target, FastAPI) else None,
             )
 
+    @property
+    def items(self) -> "ItemStores":
+        """アイテムストアへのアクセス。enable_itemstores=Falseの場合はエラーを出す。"""
+        if self._items is None:
+            raise RuntimeError(
+                "Item stores are not enabled. To use item stores, enable them by passing "
+                "'enable_itemstores=True' to the Sonolus constructor."
+            )
+        return self._items
+    
     def attach(self, target: FastAPI | APIRouter, enable_cors: Optional[bool] = None):
         """SonolusルートをFastAPIまたはAPIRouterに登録します。"""
         target_id = id(target)
@@ -338,6 +354,12 @@ class Sonolus:
         Sonolus packでパックされたものを読み込みます。
         Load a pack packed with Sonolus pack.
         """
+        if not self._enable_itemstores or self._items is None:
+            raise RuntimeError(
+                "Item stores are not enabled. To load packs, enable item stores by passing "
+                "'enable_itemstores=True' to the Sonolus constructor."
+            )
+        
         import os
         
         # pathが配列の場合は各パスに対して再帰的にloadを呼び出す
