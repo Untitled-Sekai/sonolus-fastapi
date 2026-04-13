@@ -184,3 +184,12 @@ class LeaderboardRecordDetailHandlerDescriptor(Generic[T]):
 
     async def call(self, ctx: Ctx, item_name: str, leaderboard_name: str, record_name: str) -> T:
         return await self.fn(ctx, item_name, leaderboard_name, record_name)
+
+# Room Handlers
+class RoomCreateHandlerDescriptor(Generic[T]):
+    def __init__(self, fn: Callable[[Ctx], Awaitable[T]], response_model: type[T]):
+        self.fn = fn
+        self.response_model = response_model
+
+    async def call(self, ctx: Ctx) -> T:
+        return await self.fn(ctx)

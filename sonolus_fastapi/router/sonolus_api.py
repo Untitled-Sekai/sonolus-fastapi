@@ -47,6 +47,9 @@ class SonolusApi:
         self.router.get("/{item_type}/result/info")(self._result_info)
         self.router.post("/{item_type}/result/submit")(self._result_submit)
         self.router.post("/{item_type}/result/upload")(self._result_upload)
+
+        # Rooms Create API (only for rooms) - Must be before generic routes
+        self.router.post("/{item_type}/create")(self._room_create)
         
         # Generic item routes
         self.router.get("/{item_type}/{name}")(self._detail)
@@ -364,6 +367,28 @@ class SonolusApi:
             raise HTTPException(404, "result upload handler not implemented")
         
         result = await handler.call(ctx, upload_key, files)
+        return self._build_response(handler, result, request)
+
+    async def _room_create(self, item_type: ItemType, request: Request):
+        from sonolus_models import ServerCreateRoomRequest
+        if item_type != ItemType.room:
+            raise HTTPException(404, "room create API is only available for rooms")
+        
+        ctx = self.sonolus.build_context(request)
+        
+        # リクエストボディをパース
+        body_bytes = await request.body()
+        try:
+            body = json.loads(body_bytes) if body_bytes else {}
+            room_request = ServerCreateRoomRequest.model_validate(body)
+        except Exception as e:
+            raise HTTPException(400, f"Invalid request body: {str(e)}")
+        
+        handler = self.sonolus.get_room_handler("create")
+        if handler is None:
+            raise HTTPException(404, "room create handler not implemented")
+        
+        result = await handler.call(ctx)
         return self._build_response(handler, result, request)
 
     async def _community_info(self, item_type: ItemType, name: str, request: Request):

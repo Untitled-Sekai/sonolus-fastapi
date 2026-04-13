@@ -19,6 +19,7 @@ from .search.registry import SearchRegistry
 from sonolus_models import ItemType
 from .utils.item_namespace import ItemNamespace
 from .utils.server_namespace import ServerNamespace
+from .utils.room_namespace import RoomNamespace
 from .utils.pack import set_pack_memory
 from .utils.context import SonolusContext
 from .utils.query import Query
@@ -103,6 +104,7 @@ class Sonolus:
         self._configuration_option_types: Dict[str, str] = {}  # オプションの型を保存
         
         self.server = ServerNamespace(self)
+        self.room = RoomNamespace(self)
         self.level = ItemNamespace(self, ItemType.level)
         self.skin = ItemNamespace(self, ItemType.skin)
         self.engine = ItemNamespace(self, ItemType.engine)
@@ -282,6 +284,9 @@ class Sonolus:
     
     def _register_leaderboard_handler(self, item_type: ItemType, kind: str, descriptor: object):
         self._handlers.setdefault(item_type, {}).setdefault("leaderboard", {})[kind] = descriptor
+    
+    def _register_room_handler(self, kind: str, descriptor: object):
+        self._handlers.setdefault("room", {})[kind] = descriptor
         
     def get_handler(self, item_type: ItemType, kind: Kind, filter_key: str | None = None):
         """ハンドラーを取得する
@@ -320,6 +325,9 @@ class Sonolus:
     
     def get_leaderboard_handler(self, item_type: ItemType, kind: str):
         return self._handlers.get(item_type, {}).get("leaderboard", {}).get(kind)
+    
+    def get_room_handler(self, kind: str):
+        return self._handlers.get("room", {}).get(kind)
     
     def register_configuration_options(self, options: List):
         """Configuration optionsを登録し、クエリ名を保存"""
