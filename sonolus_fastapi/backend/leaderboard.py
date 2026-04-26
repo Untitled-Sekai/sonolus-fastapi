@@ -1,25 +1,42 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union, Any
 from sonolus_models import ItemType
 from .backend import StorageBackend
 from .leaderboard_memory import MemoryRecordStore
 from .leaderboard_json import JsonRecordStore
 from .leaderboard_database import DatabaseRecordStore
 
+RecordStoreType = Union[MemoryRecordStore, JsonRecordStore, DatabaseRecordStore]
+
 class LeaderboardRecordStore:
     """アイテムごとのleaderboard recordsを管理する統合ストア"""
     
-    def __init__(self, backend: StorageBackend, **options):
-        self.backend = backend
-        self.options = options
+    def __init__(self, backend: StorageBackend, **options: Any) -> None:
+        """Initialize LeaderboardRecordStore.
+        
+        Args:
+            backend: Storage backend type
+            **options: Additional backend-specific options
+        """
+        self.backend: StorageBackend = backend
+        self.options: dict[str, Any] = options
         
         # Memory バックエンドの場合、全データをここに保持
         if backend == StorageBackend.MEMORY:
             self._memory_data: Dict[Tuple[ItemType, str, str], MemoryRecordStore] = {}
         else:
-            self._stores: Dict[Tuple[ItemType, str, str], object] = {}
+            self._stores: Dict[Tuple[ItemType, str, str], RecordStoreType] = {}
     
-    def get_store(self, item_type: ItemType, item_name: str, leaderboard_name: str):
-        """特定アイテムのleaderboard recordsストアを取得"""
+    def get_store(self, item_type: ItemType, item_name: str, leaderboard_name: str) -> RecordStoreType:
+        """特定アイテムのleaderboard recordsストアを取得
+        
+        Args:
+            item_type: Type of item
+            item_name: Name of item
+            leaderboard_name: Name of leaderboard
+            
+        Returns:
+            Leaderboard record store for the specified item
+        """
         key = (item_type, item_name, leaderboard_name)
         
         if self.backend == StorageBackend.MEMORY:
@@ -32,7 +49,20 @@ class LeaderboardRecordStore:
             self._stores[key] = self._create_store(item_type, item_name, leaderboard_name)
         return self._stores[key]
     
-    def _create_store(self, item_type: ItemType, item_name: str, leaderboard_name: str):
+    def _create_store(self, item_type: ItemType, item_name: str, leaderboard_name: str) -> RecordStoreType:
+        """Create a new leaderboard record store based on backend type.
+        
+        Args:
+            item_type: Type of item
+            item_name: Name of item
+            leaderboard_name: Name of leaderboard
+            
+        Returns:
+            Newly created leaderboard record store
+            
+        Raises:
+            ValueError: If backend is not supported
+        """
         if self.backend == StorageBackend.JSON:
             path = self.options.get("path", "./data")
             return JsonRecordStore(item_type, item_name, leaderboard_name, path)

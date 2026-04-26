@@ -1,5 +1,5 @@
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple, List
 from sonolus_models import BackgroundItem
 from sonolus_models import EffectItem
 from sonolus_models import ParticleItem
@@ -11,7 +11,7 @@ from ..backend import StorageBackend
 if TYPE_CHECKING:
     from ..index import Sonolus
 
-def pack_2_ItemModel(pack: PackModel):
+def pack_2_ItemModel(pack: PackModel) -> Tuple[List[BackgroundItem], List[EffectItem], List[ParticleItem], List[SkinItem]]:
     """
     PackModelを各ItemModelに変換します。
     """
@@ -83,7 +83,7 @@ def pack_2_ItemModel(pack: PackModel):
     return background_items, effect_items, particle_items, skin_items
 
 
-def set_pack_memory(db_path: str, sonolus: "Sonolus"):
+def set_pack_memory(db_path: str, sonolus: "Sonolus") -> None:
     """
     パックのjsonデータをメモリにセットします。
     """

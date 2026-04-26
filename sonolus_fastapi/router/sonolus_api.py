@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException, FastAPI
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union
 from sonolus_models import SonolusSignaturePublicKey
 from sonolus_models.items import ItemType
 from typing import Literal
@@ -10,6 +10,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 from cryptography.hazmat.backends import default_backend
+
+T = TypeVar('T')
 
 if TYPE_CHECKING:
     from sonolus_fastapi.index import Sonolus
@@ -125,8 +127,19 @@ class SonolusApi:
             print(f"Signature verification failed: {e}")
             return False
     
-    async def _parse_request_body(self, request: Request, model_class=None):
-        """リクエストボディを解析してモデルクラスのインスタンスを返す"""
+    async def _parse_request_body(self, request: Request, model_class: Optional[type[T]] = None) -> Union[dict[str, Any], T]:
+        """Parse request body and return model instance or dict.
+        
+        Args:
+            request: FastAPI request object
+            model_class: Optional Pydantic model class to validate against
+            
+        Returns:
+            Validated model instance if model_class is provided, otherwise raw dict
+            
+        Raises:
+            HTTPException: If request body parsing fails
+        """
         try:
             body = await request.json()
             if model_class:
@@ -138,7 +151,17 @@ class SonolusApi:
             print(traceback.format_exc())
             raise HTTPException(400, f"Invalid request body: {str(e)}")
 
-    def _build_response(self, handler, result, request: Request):
+    def _build_response(self, handler: Any, result: Any, request: Request) -> dict[str, Any]:
+        """Build response by applying source fields and validating with response model.
+        
+        Args:
+            handler: Handler descriptor with response_model
+            result: Raw result from handler
+            request: FastAPI request object
+            
+        Returns:
+            Validated response dict ready for JSON serialization
+        """
         result = self.sonolus.apply_response_source(result, request)
         validated = handler.response_model.model_validate(result)
         validated = self.sonolus.apply_response_source(validated, request)
@@ -150,7 +173,8 @@ class SonolusApi:
     # -------------------------
     
 
-    async def _authenticate(self, request: Request):
+    async def _authenticate(self, request: Request) -> dict[str, Any]:
+        """Handle server authentication."""
         from sonolus_models import ServerAuthenticateRequest
         
         # Sonolus-Signatureヘッダーを取得
@@ -192,7 +216,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
     
-    async def _server_info(self, request: Request):
+    async def _server_info(self, request: Request) -> dict[str, Any]:
+        """Get server information."""
         ctx = self.sonolus.build_context(request)
         
         handler = self.sonolus.get_server_handler("server_info")
@@ -203,7 +228,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _info(self, item_type: ItemType, request: Request):
+    async def _info(self, item_type: ItemType, request: Request) -> dict[str, Any]:
+        """Get item type information."""
         ctx = self.sonolus.build_context(request)
         
         # クエリパラメータから type を取得（info_type用）
@@ -217,7 +243,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _list(self, item_type: ItemType, request: Request):
+    async def _list(self, item_type: ItemType, request: Request) -> dict[str, Any]:
+        """Get list of items."""
         ctx = self.sonolus.build_context(request)
         query = self.sonolus.build_query(item_type, request)
         
@@ -232,7 +259,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _detail(self, item_type: ItemType, name: str, request: Request):
+    async def _detail(self, item_type: ItemType, name: str, request: Request) -> dict[str, Any]:
+        """Get item detail."""
         ctx = self.sonolus.build_context(request)
         
         # クエリパラメータから type を取得（detail_type用）
@@ -246,7 +274,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _actions(self, item_type: ItemType, name: str, request: Request):
+    async def _actions(self, item_type: ItemType, name: str, request: Request) -> dict[str, Any]:
+        """Handle item actions."""
         ctx = self.sonolus.build_context(request)
         action_request = await self._parse_request_body(request)
         
@@ -260,7 +289,8 @@ class SonolusApi:
         result = await handler.call(ctx, name, action_request)
         return self._build_response(handler, result, request)
     
-    async def _upload(self, item_type: ItemType, name: str, request: Request):
+    async def _upload(self, item_type: ItemType, name: str, request: Request) -> dict[str, Any]:
+        """Handle item upload."""
         from fastapi import File, UploadFile, Form
         from typing import List
         
@@ -283,7 +313,8 @@ class SonolusApi:
         result = await handler.call(ctx, name, upload_key, files)
         return self._build_response(handler, result, request)
     
-    async def _result_info(self, item_type: ItemType, request: Request):
+    async def _result_info(self, item_type: ItemType, request: Request) -> dict[str, Any]:
+        """Get result information (levels only)."""
         # result info is only available for levels
         if item_type != ItemType.level:
             raise HTTPException(404, "result info is only available for levels")
@@ -300,7 +331,8 @@ class SonolusApi:
         result = await handler.call(ctx)
         return self._build_response(handler, result, request)
     
-    async def _result_submit(self, item_type: ItemType, request: Request):
+    async def _result_submit(self, item_type: ItemType, request: Request) -> dict[str, Any]:
+        """Submit result (levels only)."""
         # result submit is only available for levels
         if item_type != ItemType.level:
             raise HTTPException(404, "result submit is only available for levels")
@@ -342,7 +374,8 @@ class SonolusApi:
         result = await handler.call(ctx, submit_request)
         return self._build_response(handler, result, request)
     
-    async def _result_upload(self, item_type: ItemType, request: Request):
+    async def _result_upload(self, item_type: ItemType, request: Request) -> dict[str, Any]:
+        """Upload result (levels only)."""
         # result upload is only available for levels
         if item_type != ItemType.level:
             raise HTTPException(404, "result upload is only available for levels")
@@ -369,7 +402,8 @@ class SonolusApi:
         result = await handler.call(ctx, upload_key, files)
         return self._build_response(handler, result, request)
 
-    async def _room_create(self, item_type: ItemType, request: Request):
+    async def _room_create(self, item_type: ItemType, request: Request) -> dict[str, Any]:
+        """Create a room (rooms only)."""
         from sonolus_models import ServerCreateRoomRequest
         if item_type != ItemType.room:
             raise HTTPException(404, "room create API is only available for rooms")
@@ -391,7 +425,8 @@ class SonolusApi:
         result = await handler.call(ctx)
         return self._build_response(handler, result, request)
 
-    async def _community_info(self, item_type: ItemType, name: str, request: Request):
+    async def _community_info(self, item_type: ItemType, name: str, request: Request) -> dict[str, Any]:
+        """Get community information for an item."""
         ctx = self.sonolus.build_context(request)
 
         handler = self.sonolus.get_community_handler(item_type, "info")
@@ -402,7 +437,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _community_comments(self, item_type: ItemType, name: str, request: Request):
+    async def _community_comments(self, item_type: ItemType, name: str, request: Request) -> dict[str, Any]:
+        """Get community comments for an item."""
         ctx = self.sonolus.build_context(request)
         query = self.sonolus.build_query(item_type, request)
 
@@ -414,7 +450,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _community_actions(self, item_type: ItemType, name: str, request: Request):
+    async def _community_actions(self, item_type: ItemType, name: str, request: Request) -> dict[str, Any]:
+        """Handle community actions for an item."""
         ctx = self.sonolus.build_context(request)
         action_request = await self._parse_request_body(request)
 
@@ -426,7 +463,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _community_upload(self, item_type: ItemType, name: str, request: Request):
+    async def _community_upload(self, item_type: ItemType, name: str, request: Request) -> dict[str, Any]:
+        """Handle community upload for an item."""
         from fastapi import File, UploadFile, Form
         from typing import List
         
@@ -447,7 +485,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _community_comment_actions(self, item_type: ItemType, name: str, comment_name: str, request: Request):
+    async def _community_comment_actions(self, item_type: ItemType, name: str, comment_name: str, request: Request) -> dict[str, Any]:
+        """Handle community comment actions."""
         ctx = self.sonolus.build_context(request)
         action_request = await self._parse_request_body(request)
 
@@ -459,7 +498,8 @@ class SonolusApi:
         return self._build_response(handler, result, request)
     
 
-    async def _community_comment_upload(self, item_type: ItemType, name: str, comment_name: str, request: Request):
+    async def _community_comment_upload(self, item_type: ItemType, name: str, comment_name: str, request: Request) -> dict[str, Any]:
+        """Handle community comment upload."""
         from fastapi import File, UploadFile, Form
         from typing import List
         
@@ -479,7 +519,8 @@ class SonolusApi:
         result = await handler.call(ctx, name, comment_name, upload_key, files)
         return self._build_response(handler, result, request)
 
-    async def _leaderboard_detail(self, item_type: ItemType, name: str, leaderboard_name: str, request: Request):
+    async def _leaderboard_detail(self, item_type: ItemType, name: str, leaderboard_name: str, request: Request) -> dict[str, Any]:
+        """Get leaderboard details."""
         ctx = self.sonolus.build_context(request)
 
         handler = self.sonolus.get_leaderboard_handler(item_type, "detail")
@@ -489,7 +530,8 @@ class SonolusApi:
         result = await handler.call(ctx, name, leaderboard_name)
         return self._build_response(handler, result, request)
 
-    async def _leaderboard_records(self, item_type: ItemType, name: str, leaderboard_name: str, request: Request):
+    async def _leaderboard_records(self, item_type: ItemType, name: str, leaderboard_name: str, request: Request) -> dict[str, Any]:
+        """Get leaderboard records."""
         ctx = self.sonolus.build_context(request)
         query = self.sonolus.build_query(item_type, request)
 
@@ -500,7 +542,8 @@ class SonolusApi:
         result = await handler.call(ctx, name, leaderboard_name, query)
         return self._build_response(handler, result, request)
 
-    async def _leaderboard_record_detail(self, item_type: ItemType, name: str, leaderboard_name: str, record_name: str, request: Request):
+    async def _leaderboard_record_detail(self, item_type: ItemType, name: str, leaderboard_name: str, record_name: str, request: Request) -> dict[str, Any]:
+        """Get leaderboard record details."""
         ctx = self.sonolus.build_context(request)
 
         handler = self.sonolus.get_leaderboard_handler(item_type, "record_detail")

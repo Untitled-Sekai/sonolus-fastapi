@@ -1,20 +1,36 @@
 from .backend import StorageBackend
 from .memory import MemoryItemStore
 from .json import JsonItemStore
-from typing import TypeVar
+from .database import DatabaseItemStore
+from typing import TypeVar, Any, Type, Union
 
 T = TypeVar("T")
 
 class StoreFactory:
-    def __init__(self, backend: StorageBackend, **options):
-        """
-        Args:
-            backend: ストレージバックエンド Storage backend
-        """
-        self.backend = backend
-        self.options = options
+    """Factory for creating item stores with different backends."""
+    
+    def __init__(self, backend: StorageBackend, **options: Any) -> None:
+        """Initialize StoreFactory.
         
-    def create(self, item_cls: T) -> T:
+        Args:
+            backend: Storage backend type
+            **options: Backend-specific options (e.g., path for JSON, url for DATABASE)
+        """
+        self.backend: StorageBackend = backend
+        self.options: dict[str, Any] = options
+        
+    def create(self, item_cls: Type[T]) -> Union[MemoryItemStore, "JsonItemStore", "DatabaseItemStore"]:
+        """Create an item store of the specified type.
+        
+        Args:
+            item_cls: Item class to create store for
+            
+        Returns:
+            Instance of MemoryItemStore, JsonItemStore, or DatabaseItemStore
+            
+        Raises:
+            ValueError: If backend is not supported
+        """
         if self.backend == StorageBackend.MEMORY:
             return MemoryItemStore(item_cls)
         elif self.backend == StorageBackend.JSON:

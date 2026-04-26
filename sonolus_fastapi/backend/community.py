@@ -1,25 +1,41 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union, Any
 from sonolus_models import ItemType
 from .backend import StorageBackend
 from .community_memory import MemoryCommentStore
 from .community_json import JsonCommentStore
 from .community_database import DatabaseCommentStore
 
+CommentStoreType = Union[MemoryCommentStore, JsonCommentStore, DatabaseCommentStore]
+
 class CommunityCommentStore:
     """アイテムごとのコメントを管理する統合ストア"""
     
-    def __init__(self, backend: StorageBackend, **options):
-        self.backend = backend
-        self.options = options
+    def __init__(self, backend: StorageBackend, **options: Any) -> None:
+        """Initialize CommunityCommentStore.
+        
+        Args:
+            backend: Storage backend type
+            **options: Additional backend-specific options
+        """
+        self.backend: StorageBackend = backend
+        self.options: dict[str, Any] = options
         
         # Memory バックエンドの場合、全データをここに保持
         if backend == StorageBackend.MEMORY:
             self._memory_data: Dict[Tuple[ItemType, str], MemoryCommentStore] = {}
         else:
-            self._stores: Dict[Tuple[ItemType, str], object] = {}
+            self._stores: Dict[Tuple[ItemType, str], CommentStoreType] = {}
     
-    def get_store(self, item_type: ItemType, item_name: str):
-        """特定アイテムのコメントストアを取得"""
+    def get_store(self, item_type: ItemType, item_name: str) -> CommentStoreType:
+        """特定アイテムのコメントストアを取得
+        
+        Args:
+            item_type: Type of item
+            item_name: Name of item
+            
+        Returns:
+            Comment store for the specified item
+        """
         key = (item_type, item_name)
         
         if self.backend == StorageBackend.MEMORY:
@@ -32,7 +48,19 @@ class CommunityCommentStore:
             self._stores[key] = self._create_store(item_type, item_name)
         return self._stores[key]
     
-    def _create_store(self, item_type: ItemType, item_name: str):
+    def _create_store(self, item_type: ItemType, item_name: str) -> CommentStoreType:
+        """Create a new comment store based on backend type.
+        
+        Args:
+            item_type: Type of item
+            item_name: Name of item
+            
+        Returns:
+            Newly created comment store
+            
+        Raises:
+            ValueError: If backend is not supported
+        """
         if self.backend == StorageBackend.JSON:
             path = self.options.get("path", "./data")
             return JsonCommentStore(item_type, item_name, path)
