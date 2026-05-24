@@ -118,6 +118,14 @@ def seed_data(sonolus: Sonolus):
 	)
 	sonolus.items.post.add(post_item)
 
+	item = sonolus.items.post.get("example_post")
+	
+	item.get_tag_titles()  # タグタイトルの取得も可能
+	item.add_tags(["example", "sample"])  # タグの追加も可能
+	item.with_tags(["newtag1", "newtag2"])  # タグの上書きも可能
+	item.clear_tags()  # タグのクリアも可能
+	item.remove_tags(["example"])  # タグの削除も可能
+
 
 def register_handlers(sonolus: Sonolus, config_options: list):
 	"""

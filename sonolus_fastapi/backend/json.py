@@ -1,7 +1,8 @@
 import json
 import os
-from typing import TypeVar, Generic, Dict, List, Optional
+from typing import TypeVar, Generic, Dict, List, Optional, Union
 from sonolus_fastapi.utils.source import strip_source_fields
+from sonolus_fastapi.utils.taggable_item import TaggableItem
 
 T = TypeVar("T")
 
@@ -25,12 +26,13 @@ class JsonItemStore(Generic[T]):
         with open(self.file, "w", encoding="utf-8") as f:
             json.dump(self._data, f, ensure_ascii=False, indent=2)
                 
-    def get(self, name: str) -> Optional[T]:
+    def get(self, name: str) -> Optional[Union[T, TaggableItem[T]]]:
         raw = self._data.get(name)
         if raw is None:
             return None
         
-        return self.item_cls.model_validate(raw)
+        item = self.item_cls.model_validate(raw)
+        return TaggableItem(item)
     
     def list(self, limit: int = 20, offset: int = 0) -> List[T]:
         if limit > 20:

@@ -1,7 +1,8 @@
 import json
-from typing import TypeVar, Generic, List, Optional
+from typing import TypeVar, Generic, List, Optional, Union
 from sqlalchemy import create_engine, text
 from sonolus_fastapi.utils.source import strip_source_fields
+from sonolus_fastapi.utils.taggable_item import TaggableItem
 from .result import ListResult
 
 T = TypeVar("T")
@@ -26,7 +27,7 @@ class DatabaseItemStore(Generic[T]):
             """))
             conn.commit()
             
-    def get(self, name: str) -> Optional[T]:
+    def get(self, name: str) -> Optional[Union[T, TaggableItem[T]]]:
         with self.engine.connect() as conn:
             row = conn.execute(
                 text("SELECT data FROM items WHERE name = :name AND item_type = :item_type"),
@@ -36,7 +37,8 @@ class DatabaseItemStore(Generic[T]):
             if row is None:
                 return None
             
-            return self.item_cls.model_validate(json.loads(row[0]))
+            item = self.item_cls.model_validate(json.loads(row[0]))
+            return TaggableItem(item)
         
     def list(self, limit: int = 20, offset: int = 0) -> ListResult[T]:
         if limit > 20:

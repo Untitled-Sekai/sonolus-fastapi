@@ -1,5 +1,6 @@
-from typing import Generic, TypeVar, Dict, List, Optional
+from typing import Generic, TypeVar, Dict, List, Optional, Union
 from sonolus_fastapi.utils.source import strip_source_fields
+from sonolus_fastapi.utils.taggable_item import TaggableItem
 
 T = TypeVar("T")
 
@@ -8,8 +9,11 @@ class MemoryItemStore(Generic[T]):
         self.item_cls = item_cls
         self._data: Dict[str, T] = {}
         
-    def get(self, name: str) -> Optional[T]:
-        return self._data.get(name)
+    def get(self, name: str) -> Optional[Union[T, TaggableItem[T]]]:
+        item = self._data.get(name)
+        if item is None:
+            return None
+        return TaggableItem(item)
     
     def list(self, limit: int = 20, offset: int = 0) -> List[T]:
         if limit > 20:
