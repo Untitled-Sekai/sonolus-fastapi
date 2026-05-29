@@ -23,12 +23,28 @@ class DatabaseCommentStore:
                     parent_type TEXT NOT NULL,
                     parent_name TEXT NOT NULL,
                     author TEXT NOT NULL,
-                    time INTEGER NOT NULL,
+                    time BIGINT NOT NULL,
                     content TEXT NOT NULL,
                     data TEXT NOT NULL,
                     PRIMARY KEY (comment_name, parent_type, parent_name)
                 )
             """))
+
+            if conn.dialect.name == "postgresql":
+                column_type = conn.execute(text("""
+                    SELECT data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'comments'
+                      AND column_name = 'time'
+                """)).scalar()
+
+                if column_type and column_type.lower() != "bigint":
+                    conn.execute(text("""
+                        ALTER TABLE comments
+                        ALTER COLUMN time TYPE BIGINT
+                        USING time::bigint
+                    """))
             
             # インデックスを追加（親アイテムごとのクエリを高速化）
             conn.execute(text("""
