@@ -2,6 +2,7 @@ import json
 import os
 from typing import Dict, List, Optional
 from sonolus_models import ItemType, ServerItemCommunityComment
+from .result import ListResult
 
 class JsonCommentStore:
     """JSONファイルでコメントを管理するストア"""
@@ -37,17 +38,25 @@ class JsonCommentStore:
             return None
         return ServerItemCommunityComment.model_validate(raw)
     
-    def list(self, limit: int = 10, offset: int = 0) -> List[ServerItemCommunityComment]:
+    def list(self, limit: int = 10, offset: int = 0) -> ListResult[ServerItemCommunityComment]:
         if limit > 20:
             limit = 20
         
-        comments = [
+        all_comments = [
             ServerItemCommunityComment.model_validate(v)
             for v in self._data.values()
         ]
         # 時間でソート（新しい順）
-        comments.sort(key=lambda x: x.time, reverse=True)
-        return comments[offset:offset + limit]
+        all_comments.sort(key=lambda x: x.time, reverse=True)
+        total_count = len(all_comments)
+        comments = all_comments[offset:offset + limit]
+        
+        return ListResult(
+            items=comments,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
     
     def add(self, comment: ServerItemCommunityComment):
         self._data[comment.name] = comment.model_dump()

@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
 from sonolus_models import ItemType, ServerItemLeaderboardRecord
+from .result import ListResult
 
 class MemoryRecordStore:
     """メモリ上でleaderboard recordsを管理するストア"""
@@ -14,14 +15,22 @@ class MemoryRecordStore:
     def get(self, record_name: str) -> Optional[ServerItemLeaderboardRecord]:
         return self._data.get(record_name)
     
-    def list(self, limit: int = 10, offset: int = 0) -> List[ServerItemLeaderboardRecord]:
+    def list(self, limit: int = 10, offset: int = 0) -> ListResult[ServerItemLeaderboardRecord]:
         if limit > 20:
             limit = 20
         
-        items = list(self._data.values())
+        all_items = list(self._data.values())
         # ランクでソート（数値として）
-        items.sort(key=lambda x: int(x.rank) if x.rank.isdigit() else float('inf'))
-        return items[offset:offset + limit]
+        all_items.sort(key=lambda x: int(x.rank) if x.rank.isdigit() else float('inf'))
+        total_count = len(all_items)
+        items = all_items[offset:offset + limit]
+        
+        return ListResult(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
     
     def add(self, record: ServerItemLeaderboardRecord):
         self._data[record.name] = record

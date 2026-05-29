@@ -1,6 +1,7 @@
 from typing import Generic, TypeVar, Dict, List, Optional, Union
 from sonolus_fastapi.utils.source import strip_source_fields
 from sonolus_fastapi.utils.taggable_item import TaggableItem, unwrap_taggable_item
+from .result import ListResult
 
 T = TypeVar("T")
 
@@ -15,12 +16,20 @@ class MemoryItemStore(Generic[T]):
             return None
         return TaggableItem(item)
     
-    def list(self, limit: int = 20, offset: int = 0) -> List[T]:
+    def list(self, limit: int = 20, offset: int = 0) -> ListResult[T]:
         if limit > 20:
             limit = 20  # 最大20件に制限
-            
-        items = list(self._data.values())
-        return items[offset:offset + limit]
+        
+        all_items = list(self._data.values())
+        total_count = len(all_items)
+        items = all_items[offset:offset + limit]
+        
+        return ListResult(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
     
     def add(self, item: T):
         item = unwrap_taggable_item(item)

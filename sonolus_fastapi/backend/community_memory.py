@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
 from sonolus_models import ItemType, ServerItemCommunityComment
+from .result import ListResult
 
 class MemoryCommentStore:
     """メモリ上でコメントを管理するストア"""
@@ -13,14 +14,22 @@ class MemoryCommentStore:
     def get(self, comment_name: str) -> Optional[ServerItemCommunityComment]:
         return self._data.get(comment_name)
     
-    def list(self, limit: int = 10, offset: int = 0) -> List[ServerItemCommunityComment]:
+    def list(self, limit: int = 10, offset: int = 0) -> ListResult[ServerItemCommunityComment]:
         if limit > 20:
             limit = 20
         
-        items = list(self._data.values())
+        all_items = list(self._data.values())
         # 時間でソート（新しい順）
-        items.sort(key=lambda x: x.time, reverse=True)
-        return items[offset:offset + limit]
+        all_items.sort(key=lambda x: x.time, reverse=True)
+        total_count = len(all_items)
+        items = all_items[offset:offset + limit]
+        
+        return ListResult(
+            items=items,
+            total_count=total_count,
+            limit=limit,
+            offset=offset
+        )
     
     def add(self, comment: ServerItemCommunityComment):
         self._data[comment.name] = comment
