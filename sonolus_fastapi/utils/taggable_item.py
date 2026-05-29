@@ -143,3 +143,31 @@ class TaggableItem(Generic[T]):
     def __hash__(self) -> int:
         item = object.__getattribute__(self, "_item")
         return hash(item)
+
+    def unwrap(self) -> T:
+        """
+        ラップされたアイテムを返します。タグメソッドと異なり、
+        元のアイテムをそのまま返します（タグは保持されます）。
+        
+        Returns:
+            ラップされたアイテム
+        """
+        return object.__getattribute__(self, "_item")
+
+
+def unwrap_taggable_item(item: Any) -> Any:
+    """
+    TaggableItem を自動的にアンラップします。
+    TaggableItem でない場合はそのまま返します。
+    
+    Args:
+        item: アンラップするアイテム（TaggableItem or その他）
+        
+    Returns:
+        アンラップされたアイテム、またはそのまま返されたアイテム
+    """
+    if item is None:
+        return None
+    if isinstance(item, TaggableItem):
+        return object.__getattribute__(item, "_item")
+    return item

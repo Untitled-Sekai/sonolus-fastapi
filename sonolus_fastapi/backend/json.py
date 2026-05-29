@@ -2,7 +2,7 @@ import json
 import os
 from typing import TypeVar, Generic, Dict, List, Optional, Union
 from sonolus_fastapi.utils.source import strip_source_fields
-from sonolus_fastapi.utils.taggable_item import TaggableItem
+from sonolus_fastapi.utils.taggable_item import TaggableItem, unwrap_taggable_item
 
 T = TypeVar("T")
 
@@ -45,6 +45,7 @@ class JsonItemStore(Generic[T]):
         return items[offset:offset + limit]
         
     def add(self, item: T):
+        item = unwrap_taggable_item(item)
         item = strip_source_fields(item)
         self._data[item.name] = item.model_dump(mode="python")
         self._save()
@@ -57,6 +58,7 @@ class JsonItemStore(Generic[T]):
             pass
     
     def update(self, item: T):
+        item = unwrap_taggable_item(item)
         item = strip_source_fields(item)
         self._data[item.name] = item.model_dump(mode="python")
         self._save()

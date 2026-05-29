@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 from cryptography.hazmat.backends import default_backend
+from sonolus_fastapi.utils.taggable_item import unwrap_taggable_item
 
 T = TypeVar('T')
 
@@ -152,20 +153,21 @@ class SonolusApi:
             raise HTTPException(400, f"Invalid request body: {str(e)}")
 
     def _remove_none_from_lists(self, obj: Any) -> Any:
-        """再帰的にリスト内のNone値を除去する
+        """再帰的にリスト内のNone値を除去し、TaggableItemをアンラップする
         
         Args:
             obj: 処理するオブジェクト（dict, list, or other）
             
         Returns:
-            Noneが除去された同じ型のオブジェクト
+            Noneが除去され、TaggableItemがアンラップされた同じ型のオブジェクト
         """
         if isinstance(obj, dict):
             return {k: self._remove_none_from_lists(v) for k, v in obj.items()}
         elif isinstance(obj, list):
             return [self._remove_none_from_lists(item) for item in obj if item is not None]
         else:
-            return obj
+            # TaggableItem をアンラップ
+            return unwrap_taggable_item(obj)
     
     def _build_response(self, handler: Any, result: Any, request: Request) -> dict[str, Any]:
         """Build response by applying source fields and validating with response model.

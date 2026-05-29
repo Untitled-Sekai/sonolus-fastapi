@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar, Dict, List, Optional, Union
 from sonolus_fastapi.utils.source import strip_source_fields
-from sonolus_fastapi.utils.taggable_item import TaggableItem
+from sonolus_fastapi.utils.taggable_item import TaggableItem, unwrap_taggable_item
 
 T = TypeVar("T")
 
@@ -23,6 +23,7 @@ class MemoryItemStore(Generic[T]):
         return items[offset:offset + limit]
     
     def add(self, item: T):
+        item = unwrap_taggable_item(item)
         item = strip_source_fields(item)
         self._data[item.name] = item
     
@@ -30,6 +31,7 @@ class MemoryItemStore(Generic[T]):
         self._data.pop(name, None)
     
     def update(self, item: T):
+        item = unwrap_taggable_item(item)
         item = strip_source_fields(item)
         self._data[item.name] = item
     
