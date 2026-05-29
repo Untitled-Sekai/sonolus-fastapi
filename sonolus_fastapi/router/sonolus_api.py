@@ -151,6 +151,22 @@ class SonolusApi:
             print(traceback.format_exc())
             raise HTTPException(400, f"Invalid request body: {str(e)}")
 
+    def _remove_none_from_lists(self, obj: Any) -> Any:
+        """再帰的にリスト内のNone値を除去する
+        
+        Args:
+            obj: 処理するオブジェクト（dict, list, or other）
+            
+        Returns:
+            Noneが除去された同じ型のオブジェクト
+        """
+        if isinstance(obj, dict):
+            return {k: self._remove_none_from_lists(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._remove_none_from_lists(item) for item in obj if item is not None]
+        else:
+            return obj
+    
     def _build_response(self, handler: Any, result: Any, request: Request) -> dict[str, Any]:
         """Build response by applying source fields and validating with response model.
         
@@ -165,7 +181,8 @@ class SonolusApi:
         result = self.sonolus.apply_response_source(result, request)
         validated = handler.response_model.model_validate(result)
         validated = self.sonolus.apply_response_source(validated, request)
-        return validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        response_dict = validated.model_dump(exclude_none=True, mode='json', by_alias=True)
+        return self._remove_none_from_lists(response_dict)
     
 
     # -------------------------
