@@ -24,8 +24,11 @@ class MemoryItemStore(Generic[T]):
         total_count = len(all_items)
         items = all_items[offset:offset + limit]
         
+        # Wrap items with TaggableItem for consistency with get()
+        wrapped_items = [TaggableItem(item) for item in items]
+        
         return ListResult(
-            items=items,
+            items=wrapped_items,
             total_count=total_count,
             limit=limit,
             offset=offset
@@ -45,11 +48,13 @@ class MemoryItemStore(Generic[T]):
         self._data[item.name] = item
     
     def map(self) -> Dict[str, T]:
-        return self._data.copy()
+        # Wrap items with TaggableItem for consistency with get()
+        return {name: TaggableItem(item) for name, item in self._data.items()}
     
     def get_many(self, names: List[str]) -> List[T]:
         result = []
         for name in names:
             if name in self._data:
-                result.append(self._data[name])
+                # Wrap items with TaggableItem for consistency with get()
+                result.append(TaggableItem(self._data[name]))
         return result

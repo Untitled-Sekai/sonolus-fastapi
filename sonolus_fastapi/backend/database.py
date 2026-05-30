@@ -63,8 +63,11 @@ class DatabaseItemStore(Generic[T]):
             for row in rows
         ]
         
+        # Wrap items with TaggableItem for consistency with get()
+        wrapped_items = [TaggableItem(item) for item in items]
+        
         return ListResult(
-            items=items,
+            items=wrapped_items,
             total_count=total_count,
             limit=limit,
             offset=offset
@@ -109,9 +112,10 @@ class DatabaseItemStore(Generic[T]):
                 text("SELECT name, data FROM items WHERE item_type = :item_type"),
                 {"item_type": self.item_type}
             ).fetchall()
-            
+        
+        # Wrap items with TaggableItem for consistency with get()
         return {
-            row[0]: self.item_cls.model_validate(json.loads(row[1]))
+            row[0]: TaggableItem(self.item_cls.model_validate(json.loads(row[1])))
             for row in rows
         }
         
@@ -135,5 +139,6 @@ class DatabaseItemStore(Generic[T]):
             for row in rows
         }
         
+        # Wrap items with TaggableItem for consistency with get()
         # 渡された順序でアイテムを返す
-        return [items_dict[name] for name in names if name in items_dict]
+        return [TaggableItem(items_dict[name]) for name in names if name in items_dict]

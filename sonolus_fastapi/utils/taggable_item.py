@@ -28,6 +28,50 @@ class TaggableItem(Generic[T]):
         """
         object.__setattr__(self, "_item", item)
 
+    def __getattr__(self, name: str) -> Any:
+        """
+        属性アクセスを内部アイテムに委譲します。
+        これにより、TaggableItem を透過的にアクセス可能にします。
+        
+        Args:
+            name: 属性名
+            
+        Returns:
+            内部アイテムの属性値
+            
+        Raises:
+            AttributeError: 属性が見つからない場合
+        """
+        if name in ("_item", "with_tags", "add_tags", "remove_tags", "clear_tags"):
+            return object.__getattribute__(self, name)
+        
+        item = object.__getattribute__(self, "_item")
+        return getattr(item, name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        属性設定を内部アイテムに委譲します。
+        
+        Args:
+            name: 属性名
+            value: 設定する値
+        """
+        if name == "_item":
+            object.__setattr__(self, name, value)
+        else:
+            item = object.__getattribute__(self, "_item")
+            setattr(item, name, value)
+
+    def __repr__(self) -> str:
+        """文字列表現を返す"""
+        item = object.__getattribute__(self, "_item")
+        return f"TaggableItem({item!r})"
+
+    def __str__(self) -> str:
+        """文字列表現を返す"""
+        item = object.__getattribute__(self, "_item")
+        return str(item)
+
     def with_tags(self, tag_titles: List[str]) -> T:
         """
         タグを設定して、新しいアイテムを返します。

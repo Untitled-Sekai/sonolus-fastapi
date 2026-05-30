@@ -46,8 +46,11 @@ class JsonItemStore(Generic[T]):
         total_count = len(all_items)
         items = all_items[offset:offset + limit]
         
+        # Wrap items with TaggableItem for consistency with get()
+        wrapped_items = [TaggableItem(item) for item in items]
+        
         return ListResult(
-            items=items,
+            items=wrapped_items,
             total_count=total_count,
             limit=limit,
             offset=offset
@@ -73,8 +76,9 @@ class JsonItemStore(Generic[T]):
         self._save()
     
     def map(self) -> Dict[str, T]:
+        # Wrap items with TaggableItem for consistency with get()
         return {
-            name: self.item_cls.model_validate(data)
+            name: TaggableItem(self.item_cls.model_validate(data))
             for name, data in self._data.items()
         }
     
@@ -82,5 +86,6 @@ class JsonItemStore(Generic[T]):
         result = []
         for name in names:
             if name in self._data:
-                result.append(self.item_cls.model_validate(self._data[name]))
+                # Wrap items with TaggableItem for consistency with get()
+                result.append(TaggableItem(self.item_cls.model_validate(self._data[name])))
         return result
