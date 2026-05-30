@@ -208,8 +208,19 @@ class TaggableItem(Generic[T]):
         Pydantic v2 のコアスキーマを定義。
         TaggableItem[T] を見た時、内部の T を検証対象にする。
         
-        これにより、リクエスト時に TaggableItem を正しくバリデーションでき、
-        レスポンス時に自動的にアンラップされる。
+        ビジネスロジック内でのネストされたフィールド検証でも
+        TaggableItem を透過的に処理できるように実装。
+        
+        使用例:
+            # バックエンドから返された TaggableItem
+            engine_item = sonolus.items.engine.get("engine_name")
+            
+            # そのまま LevelItem に渡せる（自動的にアンラップされる）
+            level = LevelItem(
+                name="test",
+                ...
+                engine=engine_item  # TaggableItem[EngineItem] をそのまま渡せる
+            )
         """
         # 型引数 T を取得
         try:
@@ -217,7 +228,6 @@ class TaggableItem(Generic[T]):
             if args:
                 inner_type = args[0]
             else:
-                # 型引数がない場合は BaseModel を使用
                 inner_type = BaseModel
         except Exception:
             inner_type = BaseModel
@@ -226,19 +236,45 @@ class TaggableItem(Generic[T]):
         try:
             inner_schema = handler.generate_schema(inner_type)
         except Exception:
-            # フォールバック：デフォルトスキーマを使用
             inner_schema = handler(inner_type)
 
-        # TaggableItem でラップしたスキーマを定義
-        # Python 側の検証と JSON シリアライゼーション
-        return core_schema.with_info_before_validator_function(
-            lambda value, info: cls._pydantic_validate(value),
-            inner_schema,
+        # TaggableItem をバリデーション前にアンラップするスキーマ
+        # これにより、TaggableItem をそのまま渡しても自動的にアンラップされる
+        return core_schema.union_schema(
+            [
+                # パターン 1: すでに TaggableItem インスタンスの場合
+                core_schema.chain_schema(
+                    [
+                        core_schema.is_instance_schema(cls),
+                        core_schema.no_info_before_validator_function(
+                            cls._unwrap_taggable_for_validation,
+                            inner_schema,
+                        ),
+                    ]
+                ),
+                # パターン 2: 内部型 T または dict がパースされる場合
+                inner_schema,
+            ],
             serialization=core_schema.plain_serializer_function_ser_schema(
                 cls._pydantic_serialize,
                 return_schema=inner_schema,
             ),
         )
+
+    @staticmethod
+    def _unwrap_taggable_for_validation(value: Any) -> Any:
+        """
+        TaggableItem を検証用にアンラップするバリデータ。
+        
+        Args:
+            value: TaggableItem インスタンス
+            
+        Returns:
+            内部のアイテム（T）
+        """
+        if isinstance(value, TaggableItem):
+            return object.__getattribute__(value, "_item")
+        return value
 
     @staticmethod
     def _pydantic_validate(value: Any) -> Any:
@@ -281,6 +317,20 @@ class TaggableItem(Generic[T]):
         # TaggableItem の場合はアンラップ
         if isinstance(value, TaggableItem):
             return object.__getattribute__(value, "_item")
+        return value
+
+    @staticmethod
+    def _pydantic_serialize_chain(value: Any) -> Any:
+        """
+        チェーンスキーマでのシリアライゼーション。
+        バリデーション後の値をそのまま返す。
+        
+        Args:
+            value: シリアライズ対象の値
+            
+        Returns:
+            値
+        """
         return value
 
 
