@@ -1,8 +1,10 @@
 """
 タグを動的に付与できるアイテムラッパー
 """
-from typing import TypeVar, Generic, List, Any, Union, Optional
+from typing import TypeVar, Generic, List, Any, Union, Optional, get_args, get_origin
 from pydantic import BaseModel
+from pydantic_core import core_schema, ValidationError
+import sys
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -197,6 +199,89 @@ class TaggableItem(Generic[T]):
             ラップされたアイテム
         """
         return object.__getattribute__(self, "_item")
+
+    # ============= Pydantic v2 バリデーション対応 =============
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type: Any, handler) -> core_schema.CoreSchema:
+        """
+        Pydantic v2 のコアスキーマを定義。
+        TaggableItem[T] を見た時、内部の T を検証対象にする。
+        
+        これにより、リクエスト時に TaggableItem を正しくバリデーションでき、
+        レスポンス時に自動的にアンラップされる。
+        """
+        # 型引数 T を取得
+        try:
+            args = get_args(source_type)
+            if args:
+                inner_type = args[0]
+            else:
+                # 型引数がない場合は BaseModel を使用
+                inner_type = BaseModel
+        except Exception:
+            inner_type = BaseModel
+
+        # 内部型のスキーマを生成
+        try:
+            inner_schema = handler.generate_schema(inner_type)
+        except Exception:
+            # フォールバック：デフォルトスキーマを使用
+            inner_schema = handler(inner_type)
+
+        # TaggableItem でラップしたスキーマを定義
+        # Python 側の検証と JSON シリアライゼーション
+        return core_schema.with_info_before_validator_function(
+            lambda value, info: cls._pydantic_validate(value),
+            inner_schema,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                cls._pydantic_serialize,
+                return_schema=inner_schema,
+            ),
+        )
+
+    @staticmethod
+    def _pydantic_validate(value: Any) -> Any:
+        """
+        Pydantic バリデーション時のコールバック。
+        TaggableItem を受け取った場合、内部のアイテムを返す。
+        
+        Args:
+            value: 検証対象の値（TaggableItem or タプル or T）
+            
+        Returns:
+            内部のアイテム（T）
+        """
+        # すでに TaggableItem なら内部アイテムを返す
+        if isinstance(value, TaggableItem):
+            return object.__getattribute__(value, "_item")
+        
+        # タプル形式の場合（パース時）
+        if isinstance(value, tuple) and len(value) == 1:
+            inner = value[0]
+            if isinstance(inner, TaggableItem):
+                return object.__getattribute__(inner, "_item")
+            return inner
+        
+        # その他はそのまま返す（Pydantic の検証に任せる）
+        return value
+
+    @staticmethod
+    def _pydantic_serialize(value: Any) -> Any:
+        """
+        Pydantic シリアライゼーション時のコールバック。
+        TaggableItem をアンラップして、内部のアイテムをシリアライズする。
+        
+        Args:
+            value: シリアライズ対象の値（通常は T）
+            
+        Returns:
+            シリアライズ対象の値
+        """
+        # TaggableItem の場合はアンラップ
+        if isinstance(value, TaggableItem):
+            return object.__getattribute__(value, "_item")
+        return value
 
 
 def unwrap_taggable_item(item: Any) -> Any:
