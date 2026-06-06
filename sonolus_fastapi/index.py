@@ -44,7 +44,7 @@ class Sonolus:
         port: int = 8000,
         dev: bool = False,
         session_store: Optional[SessionStore] = None,
-        version: str = "1.1.1",
+        version: str = "1.1.2",
         enable_cors: bool = True,
         enable_itemstores: bool = True,
         backend: StorageBackend = StorageBackend.MEMORY,
