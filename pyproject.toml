@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sonolus-fastapi"
-version = "0.5.10.2"
+version = "0.5.10.3"
 description = "FastAPI wrapper for Sonolus server creation and management This project is still under development."
 readme = "README.md"
 requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "pim4n", email = "pim4n@pim4n-net.com"}
 ]
 keywords = ["sonolus", "fastapi", "rhythm-game", "server"]
 classifiers = [
