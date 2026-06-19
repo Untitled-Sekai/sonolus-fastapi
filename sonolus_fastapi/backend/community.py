@@ -3,7 +3,11 @@ from sonolus_models import ItemType
 from .backend import StorageBackend
 from .community_memory import MemoryCommentStore
 from .community_json import JsonCommentStore
-from .community_database import DatabaseCommentStore
+from .community_database import (
+    DatabaseCommentStore,
+    get_shared_community_engine,
+    init_comments_table,
+)
 
 CommentStoreType = Union[MemoryCommentStore, JsonCommentStore, DatabaseCommentStore]
 
@@ -25,6 +29,13 @@ class CommunityCommentStore:
             self._memory_data: Dict[Tuple[ItemType, str], MemoryCommentStore] = {}
         else:
             self._stores: Dict[Tuple[ItemType, str], CommentStoreType] = {}
+
+        if backend == StorageBackend.DATABASE:
+            self._database_engine = options.get("engine")
+            if self._database_engine is None:
+                url = self.options.get("url", "sqlite:///./data/database.db")
+                self._database_engine = get_shared_community_engine(url)
+            init_comments_table(self._database_engine)
     
     def get_store(self, item_type: ItemType, item_name: str) -> CommentStoreType:
         """特定アイテムのコメントストアを取得
@@ -65,7 +76,11 @@ class CommunityCommentStore:
             path = self.options.get("path", "./data")
             return JsonCommentStore(item_type, item_name, path)
         elif self.backend == StorageBackend.DATABASE:
-            url = self.options.get("url", "sqlite:///./data/database.db")
-            return DatabaseCommentStore(item_type, item_name, url)
+            return DatabaseCommentStore(
+                item_type,
+                item_name,
+                engine=self._database_engine,
+                init_table=False,
+            )
         
         raise ValueError(f"Unsupported backend: {self.backend}")

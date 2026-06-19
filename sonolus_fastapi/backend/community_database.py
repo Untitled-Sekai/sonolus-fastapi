@@ -1,22 +1,36 @@
 import json
+from threading import Lock
 from typing import List, Optional
+from weakref import WeakSet
+
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 from sonolus_models import ItemType, ServerItemCommunityComment
 from .result import ListResult
 
-class DatabaseCommentStore:
-    """SQLデータベースでコメントを管理するストア"""
-    
-    def __init__(self, item_type: ItemType, item_name: str, url: str):
-        self.item_type = item_type
-        self.item_name = item_name
-        self.engine = create_engine(url, future=True)
-        
-        self._init_table()
-    
-    def _init_table(self):
-        """commentsテーブルを作成"""
-        with self.engine.connect() as conn:
+_ENGINE_CACHE: dict[str, Engine] = {}
+_ENGINE_CACHE_LOCK = Lock()
+_INITIALIZED_ENGINES: WeakSet[Engine] = WeakSet()
+_INIT_TABLE_LOCK = Lock()
+
+
+def get_shared_community_engine(url: str) -> Engine:
+    """Return one shared SQLAlchemy engine per database URL."""
+    with _ENGINE_CACHE_LOCK:
+        engine = _ENGINE_CACHE.get(url)
+        if engine is None:
+            engine = create_engine(url, future=True)
+            _ENGINE_CACHE[url] = engine
+        return engine
+
+
+def init_comments_table(engine: Engine) -> None:
+    """Create comments table and indexes once per engine."""
+    with _INIT_TABLE_LOCK:
+        if engine in _INITIALIZED_ENGINES:
+            return
+
+        with engine.connect() as conn:
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS comments(
                     comment_name TEXT NOT NULL,
@@ -52,6 +66,33 @@ class DatabaseCommentStore:
                 ON comments(parent_type, parent_name, time DESC)
             """))
             conn.commit()
+
+        _INITIALIZED_ENGINES.add(engine)
+
+
+class DatabaseCommentStore:
+    """SQLデータベースでコメントを管理するストア"""
+
+    def __init__(
+        self,
+        item_type: ItemType,
+        item_name: str,
+        url: str | None = None,
+        engine: Engine | None = None,
+        init_table: bool = True,
+    ):
+        self.item_type = item_type
+        self.item_name = item_name
+        self.engine = engine or get_shared_community_engine(
+            url or "sqlite:///./data/database.db"
+        )
+
+        if init_table:
+            self._init_table()
+    
+    def _init_table(self):
+        """commentsテーブルを作成"""
+        init_comments_table(self.engine)
     
     def get(self, comment_name: str) -> Optional[ServerItemCommunityComment]:
         with self.engine.connect() as conn:
